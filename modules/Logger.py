@@ -7,6 +7,7 @@ import sys
 import time
 
 import ConsoleUtils
+import modules.Configuration as Config
 from RingBuffer import RingBuffer
 from Notify import send_notification
 
@@ -41,18 +42,20 @@ class ConsoleOutput(object):
 
 
 class JsonOutput(object):
-    def __init__(self, file, logLimit):
+    def __init__(self, file, logLimit, exchange=''):
         self.jsonOutputFile = file
         self.jsonOutput = {}
         self.clearStatusValues()
         self.jsonOutputLog = RingBuffer(logLimit)
+        self.jsonOutput['exchange'] = exchange
+        self.jsonOutput['label'] = Config.get("BOT", "label", "Lending Bot")
 
     def status(self, status, time, days_remaining_msg):
         self.jsonOutput["last_update"] = time + days_remaining_msg
         self.jsonOutput["last_status"] = status
 
     def printline(self, line):
-        line = line.replace("\n",' | ')
+        line = line.replace("\n", ' | ')
         self.jsonOutputLog.append(line)
 
     def writeJsonFile(self):
@@ -77,11 +80,11 @@ class JsonOutput(object):
 
 
 class Logger(object):
-    def __init__(self, json_file='', json_log_size=-1):
+    def __init__(self, json_file='', json_log_size=-1, exchange=''):
         self._lent = ''
         self._daysRemaining = ''
         if json_file != '' and json_log_size != -1:
-            self.output = JsonOutput(json_file, json_log_size)
+            self.output = JsonOutput(json_file, json_log_size, exchange)
         else:
             self.output = ConsoleOutput()
         self.refreshStatus()
@@ -91,11 +94,12 @@ class Logger(object):
         return datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
     def log(self, msg):
-        self.output.printline(self.timestamp() + ' ' + msg)
+        log_message = "{0} {1}".format(self.timestamp(), msg)
+        self.output.printline(log_message)
         self.refreshStatus()
 
     def log_error(self, msg):
-        log_message = self.timestamp() + ' Error: ' + msg
+        log_message = "{0} Error {1}".format(self.timestamp(), msg)
         self.output.printline(log_message)
         if type(self.output) is JsonOutput:
             print log_message
@@ -107,8 +111,8 @@ class Logger(object):
         self.output.printline(line)
         self.refreshStatus()
 
-    def cancelOrders(self, cur, msg):
-        line = self.timestamp() + ' Canceling all ' + str(cur) + ' orders... ' + self.digestApiMsg(msg)
+    def cancelOrder(self, cur, msg):
+        line = self.timestamp() + ' Canceling ' + str(cur) + ' order... ' + self.digestApiMsg(msg)
         self.output.printline(line)
         self.refreshStatus()
 

@@ -1,9 +1,9 @@
 FROM python:2.7-slim
-MAINTAINER Maik Hinrichs <maik@mahiso.de>
+LABEL "project.home"="https://github.com/BitBotFactory/poloniexlendingbot"
 
 #
-# Build: docker build -t mahiso/pololendingbot .
-# Run: docker run -d -v /pololendingbot_data:/data -p 8000:8000 mahiso/pololendingbot
+# Build: docker build -t <your_id>/pololendingbot .
+# Run: docker run -d -v /pololendingbot_data:/data -p 8000:8000 <your_id>/pololendingbot
 #
 
 WORKDIR /usr/src/app
