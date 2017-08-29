@@ -105,6 +105,10 @@ hideCoins = True
 #Limits the amount of log lines to save.
 #jsonlogsize = 200
 
+#If True some frequent log messages (e.g. "Not lending ... due to rate below ..." will not append to log list.
+#Last equal log message will be shown in currency web page section. Default is false
+#jsonlogcompact = true
+
 #Enables a webserver for the www folder, in order to easily use the lendingbot.html with the .json log.
 #startWebServer = true
 
