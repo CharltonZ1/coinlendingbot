@@ -304,6 +304,12 @@ Advanced logging and Web Display
     - Format: ``200``
     - Reasons to lower this include: you are conscious of bandwidth when hosting your webserver, you prefer (slightly) faster loading times and less RAM usage of bot.
 
+- ``jsonlogcompact`` enables to log frequent repeated log messages (like "Not lending due to rate below ...") to
+currency web page section instead of appending to log list. If enabled only last message is displayed.
+
+    - Default value: Commented out, compacting of log is disabled (false)
+    - Allowed values: true, false
+
 - ``startWebServer`` if true, this enables a webserver on the www/ folder.
 
     - Default value: Commented out, uncomment to enable.

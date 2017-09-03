@@ -90,8 +90,10 @@ class Logger(object):
     def __init__(self, json_file='', json_log_size=-1, exchange=''):
         self._lent = ''
         self._daysRemaining = ''
+        self.compactLog = False
         if json_file != '' and json_log_size != -1:
             self.output = JsonOutput(json_file, json_log_size, exchange)
+            self.compactLog = bool(Config.get('BOT', 'jsonlogcompact', False))
         else:
             self.output = ConsoleOutput()
         self.refreshStatus()
@@ -117,11 +119,24 @@ class Logger(object):
         line = self.timestamp() + ' Placing ' + str(amt) + ' ' + str(cur) + ' at ' + str(
             float(rate) * 100) + '% for ' + days + ' days... ' + self.digestApiMsg(msg)
         self.output.printline(line)
+        if self.compactLog:
+            self.output.statusValue(cur, 'log', '')
         self.refreshStatus()
 
     def cancelOrder(self, cur, msg):
         line = self.timestamp() + ' Canceling ' + str(cur) + ' order... ' + self.digestApiMsg(msg)
         self.output.printline(line)
+        self.refreshStatus()
+
+    def notLending(self, cur, minRate, actRate):
+        if self.compactLog:
+            self.output.statusValue(cur, 'log',
+                                    '{:s} Not lending due to rate below {:.4f}% (actual: {:.4f}%)'
+                                    .format(self.timestamp(), (minRate * 100), (actRate * 100)))
+        else:
+            self.log('Not lending {:s} due to rate below {:.4f}% (actual: {:.4f}%)'
+                     .format(cur, (minRate * 100), (actRate * 100)))
+
         self.refreshStatus()
 
     def refreshStatus(self, lent='', days_remaining=''):

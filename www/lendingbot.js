@@ -120,6 +120,7 @@ function updateRawValues(rawData){
         var totalCoins = parseFloat(rawData[currency]['totalCoins']);
         var maxToLend = parseFloat(rawData[currency]['maxToLend']);
         var highestBidBTC = parseFloat(rawData[currency]['highestBid']);
+        var compactLog = 'log' in rawData[currency] ? rawData[currency]['log'] : ''
 
         if (currency == 'BTC') {
             // no bids for BTC provided by poloniex
@@ -208,12 +209,20 @@ function updateRawValues(rawData){
             }
             $(row).find('[data-toggle="tooltip"]').tooltip();
 
+            if (compactLog.length > 0) {
+                table.insertRow()
+                row = table.insertRow()
+                var cell = row.appendChild(document.createElement("td"))
+                cell.setAttribute("colspan", rowValues.length)
+                cell.innerHTML = "<div class='inlinediv' >" + compactLog + "</div>"
+            }
+
             var earningsColspan = rowValues.length - 1;
             // print coin earnings
             var row = table.insertRow();
             if (lentSum > 0) {
                 var cell1 = row.appendChild(document.createElement("td"));
-                cell1.innerHTML = "<span class='hidden-xs'>"+ displayCurrency +"<br/></span>Est. "+ compoundRateText +"<br/>Earnings";
+                cell1.innerHTML = "Est. "+ compoundRateText +"<br/>Earnings"
                 var cell2 = row.appendChild(document.createElement("td"));
                 cell2.setAttribute("colspan", earningsColspan);
                 if (earningsSummaryCoin != '') {
