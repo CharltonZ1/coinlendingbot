@@ -155,6 +155,18 @@ These values allow you to lock in a better rate for a longer period of time, as 
     - Default value: 60 days
     - Allowed range: 2 to 60 days
 
+- ``xdayspread`` will spread the lending days by incrementing linear from 2 days at (xdaythreshold/xdayspread) rate to xdays days at xdaythreshold rate
+
+    - Default value: 0 (disabled)
+    - Allowed range: 0 to 10 as float
+
+    - Example: Using values: xdaythreshold = 0.2, xdays = 60, xdayspread = 2,
+      the bot will lending:
+      - rates < 0.1% (=xdaythreshold/xdayspread) for 2 days
+      - rates between 0.1% and 0.2%: days will be incremented from 2 to 60 days
+        (e.g. 0.1%/2d, 0.11%/8d, 0.12%/14d, 0.13%/20d, 0.14%/26d, 0.15%/32d, 0.16%/38d, 0.17%/44d, 0.18%/50d, 0.19%/56d, 0.20%/60d)
+      - rates > 0.2% for 60 days
+
 Auto-transfer from Exchange Balance
 -----------------------------------
 
@@ -237,41 +249,6 @@ This feature group allows you to only lend a certain percentage of your total ho
     - Allowed range: 0 (disabled) or ``mindailyrate`` to 5 percent
     - Setting this to 0 with a limit in place causes the limit to always be active.
     - When an indiviaual coin's lending rate passes this threshold, all of the coin will be lent instead of the limits ``maxtolend`` or ``maxpercenttolend``
-
-
-Market Analysis
----------------
-
-This feature allows you to record a currency's market and have the bot see trends. With this data, we can compute a recommended minimum lending rate per currency to avoid lending at times when the rate dips.
-
-- ``analyseCurrencies`` is the list of currencies to analyse.
-
-    - Format: ``CURRENCY_TICKER,STR,BTC,BTS,CLAM,DOGE,DASH,LTC,MAID,XMR,XRP,ETH,FCT,ALL,ACTIVE``
-    - Commenting it out will disable the entire feature.
-    - Entering ``ACTIVE`` within the list will analyse any currencies that are found in your lending account, as well as any other currencies alongside it. Example: ``ACTIVE, BTC, CLAM`` will do BTC, CLAM, and any coins you are already lending.
-    - Entering ``ALL`` will simply analyse all coins on the lending market, whether or not you are using them.
-    - Do not worry about duplicates when using ``ACTIVE``, they are handled.
-
-
-- ``analyseMaxAge`` is the maximum duration to store market data.
-
-    - Default value: 30 days
-    - Allowed range: 1-365 days
-
-- ``analyseUpdateInterval`` is how often (asynchronous to the bot) to record each market's data.
-
-     - Default value: 60 seconds
-     - Allowed range: 10-3600 seconds
-
- .. note:: Storage usage caused by the above two settings can be calculated by: ``<amountOfCurrencies> * 30 * analyseMaxAge * (86,400 / analyseUpdateInterval)`` bytes. Default settings with ``ALL`` currencies enabled will result in using ``15.552 MegaBytes`` maximum.
-
-- ``lendingStyle`` lets you choose the percentile of each currency's market to lend at.
-
-    - Default value: 75
-    - Allowed range: 1-99
-    - Recommendations: Conservative = 50, Moderate = 75, Aggressive = 90, Very Aggressive = 99
-    - This is a percentile, so choosing 75 would mean that your minimum will be the value that the market is above 25% of the recorded time.
-    - This will stop the bot from lending during a large dip in rate, but will still allow you to take advantage of any spikes in rate.
 
 
 Config per Coin
@@ -380,6 +357,9 @@ To enable/disable a plugin add/remove it to the ``plugins`` list config option u
 
     plugins = Plugin1, Plugin2, etc...
 
+Plugins can add their own HTML pages by calling ``self.log.addSectionlog('plugins', '<pluginName>', 'navbar', True);`` within their init code.
+This will add a navbar element on the main lendingbot.html page linking to <pluginName>.html
+
 AccountStats Plugin
 ~~~~~~~~~~~~~~~~~~~
 
@@ -424,8 +404,8 @@ Notifications
 -------------
 The bot supports sending notifications for serveral different events on several different platforms. To enable notifications, you must first have a section in your config called ``[notifications]``, inside which you should enable at least one of the following events and also at least one notification platfom. The list of events you can notify about are:
 
-Notification events
-~~~~~~~~~~~~~~~~~~~
+Global Notification Settings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - ``notify_new_loans``
 
@@ -446,6 +426,10 @@ Notification events
 - ``notify_caught_exception``
 
     - This is more useful for developers and people wanting to help out by raising issues on github. This will send a notification every time there is an exception thrown in the bot that we don't handle. To enable add ``notify_caught_exception = True``.
+
+- ``notify_prefix``
+
+    - This string, if set, will be prepended to any notifications. Useful if you are running multiple bots and need to differentiate the source.
 
 Once you have decided which notifications you want to recive, you can then go about configuring platforms to send them on. Currently the bot supports:
 

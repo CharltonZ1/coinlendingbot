@@ -124,11 +124,11 @@ def get_min_loan_sizes():
     return min_loan_sizes
 
 
-def get_currencies_list(option):
-    if config.has_option("BOT", option):
+def get_currencies_list(option, section='BOT'):
+    if config.has_option(section, option):
         full_list = get_all_currencies()
         cur_list = []
-        raw_cur_list = config.get("BOT", option).split(",")
+        raw_cur_list = config.get(section, option).split(",")
         for raw_cur in raw_cur_list:
             cur = raw_cur.strip(' ').upper()
             if cur == 'ALL':
@@ -178,9 +178,16 @@ def get_all_currencies():
 def get_notification_config():
     notify_conf = {'enable_notifications': config.has_section('notifications')}
 
+    # For boolean parameters
     for conf in ['notify_tx_coins', 'notify_xday_threshold', 'notify_new_loans', 'notify_caught_exception', 'email', 'slack', 'telegram',
                  'pushbullet', 'irc']:
         notify_conf[conf] = getboolean('notifications', conf)
+
+    # For string-based parameters
+    for conf in ['notify_prefix']:
+        _val = get('notifications', conf, '').strip()
+        if len(_val) > 0:
+            notify_conf[conf] = _val
 
     # in order not to break current config, parsing for False
     notify_summary_minutes = get('notifications', 'notify_summary_minutes')

@@ -64,6 +64,13 @@ class JsonOutput(object):
             f.write(unicode(json.dumps(self.jsonOutput, ensure_ascii=False, sort_keys=True)))
             f.close()
 
+    def addSectionLog(self, section, key, value):
+        if section not in self.jsonOutput:
+            self.jsonOutput[section] = {}
+        if key not in self.jsonOutput[section]:
+            self.jsonOutput[section][key] = {}
+        self.jsonOutput[section][key] = value
+
     def statusValue(self, coin, key, value):
         if coin not in self.jsonOutputCoins:
             self.jsonOutputCoins[coin] = {}
@@ -89,7 +96,8 @@ class Logger(object):
             self.output = ConsoleOutput()
         self.refreshStatus()
 
-    def timestamp(self):
+    @staticmethod
+    def timestamp():
         ts = time.time()
         return datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
@@ -101,7 +109,7 @@ class Logger(object):
     def log_error(self, msg):
         log_message = "{0} Error {1}".format(self.timestamp(), msg)
         self.output.printline(log_message)
-        if type(self.output) is JsonOutput:
+        if isinstance(self.output, JsonOutput):
             print log_message
         self.refreshStatus()
 
@@ -123,6 +131,10 @@ class Logger(object):
             self._daysRemaining = days_remaining
         self.output.status(self._lent, self.timestamp(), self._daysRemaining)
 
+    def addSectionLog(self, section, key, value):
+        if hasattr(self.output, 'addSectionLog'):
+            self.output.addSectionLog(section, key, value)
+
     def updateStatusValue(self, coin, key, value):
         if hasattr(self.output, 'statusValue'):
             self.output.statusValue(coin, key, value)
@@ -137,7 +149,8 @@ class Logger(object):
         if hasattr(self.output, 'clearStatusValues'):
             self.output.clearStatusValues()
 
-    def digestApiMsg(self, msg):
+    @staticmethod
+    def digestApiMsg(msg):
         m = ""
         try:
             m = (msg['message'])

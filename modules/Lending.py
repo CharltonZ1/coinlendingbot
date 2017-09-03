@@ -21,6 +21,7 @@ spread_lend = 0
 gap_bottom_default = 0
 gap_top_default = 0
 xday_threshold = 0
+xday_spread = 0
 xdays = 0
 min_loan_size = 0
 min_loan_sizes = {}
@@ -35,6 +36,8 @@ max_active_alerted = {}
 notify_conf = {}
 loans_provided = {}
 gap_mode_default = ""
+scheduler = None
+exchange = None
 
 # limit of orders to request
 loanOrdersRequestLimit = {}
@@ -52,10 +55,11 @@ def init(cfg, api1, log1, data, maxtolend, dry_run1, analysis, notify_conf1):
     notify_conf = notify_conf1
 
     global sleep_time, sleep_time_active, sleep_time_inactive, min_daily_rate, max_daily_rate, spread_lend, \
-        gap_bottom_default, gap_top_default, xday_threshold, xdays, min_loan_size, end_date, coin_cfg, min_loan_sizes, \
-        dry_run, transferable_currencies, keep_stuck_orders, hide_coins, scheduler, gap_mode_default, exchange
+        gap_bottom_default, gap_top_default, xday_threshold, xday_spread, xdays, min_loan_size, end_date, coin_cfg, \
+        min_loan_sizes, dry_run, transferable_currencies, keep_stuck_orders, hide_coins, scheduler, gap_mode_default, \
+        exchange, analysis_method
 
-    exchange = api.__class__.__name__.upper()
+    exchange = Config.get_exchange()
 
     sleep_time_active = float(Config.get("BOT", "sleeptimeactive", None, 1, 3600))
     sleep_time_inactive = float(Config.get("BOT", "sleeptimeinactive", None, 1, 3600))
@@ -65,7 +69,8 @@ def init(cfg, api1, log1, data, maxtolend, dry_run1, analysis, notify_conf1):
     gap_mode_default = Config.get_gap_mode("BOT", "gapMode")
     gap_bottom_default = Decimal(Config.get("BOT", "gapbottom", None, 0))
     gap_top_default = Decimal(Config.get("BOT", "gaptop", None, gap_bottom_default))
-    xday_threshold = Decimal(Config.get("BOT", "xdaythreshold", None, 0.003, 5)) / 100
+    xday_threshold = float(Config.get("BOT", "xdaythreshold", None, 0.003, 5)) / 100
+    xday_spread = float(Config.get('BOT', 'xdayspread', 0, 0, 10))
     if exchange == 'BITFINEX':
         xdays = str(Config.get("BOT", "xdays", None, 2, 30))
     else:
@@ -78,6 +83,9 @@ def init(cfg, api1, log1, data, maxtolend, dry_run1, analysis, notify_conf1):
     transferable_currencies = Config.get_currencies_list('transferableCurrencies')
     keep_stuck_orders = Config.getboolean('BOT', "keepstuckorders", True)
     hide_coins = Config.getboolean('BOT', 'hideCoins', True)
+    analysis_method = Config.get('Daily_min', 'method', 'percentile')
+    if analysis_method not in ['percentile', 'MACD']:
+        raise ValueError("analysis_method: \"{0}\" is not valid, must be percentile or MACD".format(analysis_method))
 
     sleep_time = sleep_time_active  # Start with active mode
 
@@ -154,10 +162,14 @@ def create_lend_offer(currency, amt, rate):
     if float(rate) > 0.0001:
         rate = float(rate) - 0.000001  # lend offer just bellow the competing one
     amt = "%.8f" % Decimal(amt)
-    if float(rate) > xday_threshold:
-        days = xdays
-    if xday_threshold == 0:
-        days = '2'
+    if xday_threshold > 0:
+        if float(rate) >= xday_threshold:
+            days = xdays
+        elif xday_spread and xday_spread > 0:
+            xday_threshold_min = xday_threshold / xday_spread
+            if float(rate) > xday_threshold_min:
+                m = (float(xdays) - 2) / (xday_threshold - xday_threshold_min)
+                days = str(int(round(m * (float(rate) - xday_threshold_min) + 2)))
     if Config.has_option('BOT', 'endDate'):
         days_remaining = int(Data.get_max_duration(end_date, "order"))
         if int(days_remaining) <= 2:
@@ -248,7 +260,7 @@ def get_min_daily_rate(cur):
             coin_cfg_alerted[cur] = True
             log.log('Using custom mindailyrate ' + str(coin_cfg[cur]['minrate'] * 100) + '% for ' + cur)
     if Analysis:
-        recommended_min = Analysis.get_rate_suggestion(cur)
+        recommended_min = Analysis.get_rate_suggestion(cur, method=analysis_method)
         if cur_min_daily_rate < recommended_min:
             cur_min_daily_rate = recommended_min
     return Decimal(cur_min_daily_rate)
