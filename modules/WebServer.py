@@ -1,6 +1,8 @@
 # coding=utf-8
+import logging
 import threading
 
+logger = logging.getLogger(__name__)
 server = None
 web_server_ip = "0.0.0.0"
 web_server_port = "8000"
@@ -31,8 +33,8 @@ def initialize_web_server(config):
     # Check for custom web server template
     web_server_template = config.get('BOT', 'customWebServerTemplate', 'www')
 
-    print('Starting WebServer at {0} on port {1} with template {2}'
-          .format(web_server_ip, web_server_port, web_server_template))
+    logger.info('Starting WebServer at {0} on port {1} with template {2}'
+                .format(web_server_ip, web_server_port, web_server_template))
 
     thread = threading.Thread(target=start_web_server)
     thread.deamon = True
@@ -75,11 +77,11 @@ def start_web_server():
         serving_msg = "http://{0}:{1}/lendingbot.html".format(hosts[0], port)
         for host in hosts[1:]:
             serving_msg += ", http://{0}:{1}/lendingbot.html".format(host, port)
-        print('Started WebServer, lendingbot status available at {0}'.format(serving_msg))
+        logger.info('Started WebServer, lendingbot status available at {0}'.format(serving_msg))
         server.serve_forever()
     except Exception as ex:
         ex.message = ex.message if ex.message else str(ex)
-        print('Failed to start WebServer: {0}'.format(ex.message))
+        logger.error('Failed to start WebServer: {0}'.format(ex.message))
 
 
 def stop_web_server():
@@ -87,8 +89,8 @@ def stop_web_server():
     Stop the web server
     '''
     try:
-        print("Stopping WebServer")
+        logger.info("Stopping WebServer")
         threading.Thread(target=server.shutdown).start()
     except Exception as ex:
         ex.message = ex.message if ex.message else str(ex)
-        print("Failed to stop WebServer: {0}".format(ex.message))
+        logger.error("Failed to stop WebServer: {0}".format(ex.message))

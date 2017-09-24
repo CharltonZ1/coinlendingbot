@@ -1,9 +1,9 @@
+import logging
 import os
-import sys
 import threading
 import time
 import traceback
-import datetime
+from datetime import datetime
 import pandas as pd
 import sqlite3 as sqlite
 from sqlite3 import Error
@@ -38,6 +38,7 @@ class MarketDataException(Exception):
 
 class MarketAnalysis(object):
     def __init__(self, config, api):
+        self.logger = logging.getLogger(__name__)
         self.currencies_to_analyse = config.get_currencies_list('analyseCurrencies', 'MarketAnalysis')
         self.update_interval = int(config.get('MarketAnalysis', 'analyseUpdateInterval', 10, 1, 3600))
         self.api = api
@@ -48,7 +49,6 @@ class MarketAnalysis(object):
         self.db_dir = os.path.join(self.top_dir, 'market_data')
         self.recorded_levels = int(config.get('MarketAnalysis', 'recorded_levels', 3, 1, 100))
         self.data_tolerance = float(config.get('MarketAnalysis', 'data_tolerance', 15, 10, 90))
-        self.ma_debug_log = config.getboolean('MarketAnalysis', 'ma_debug_log')
         self.MACD_long_win_seconds = int(config.get('MarketAnalysis', 'MACD_long_win_seconds',
                                                     60 * 30 * 1 * 1,
                                                     60 * 1 * 1 * 1,
@@ -125,26 +125,9 @@ class MarketAnalysis(object):
                 self.delete_old_data(db_con, seconds)
             except Exception as ex:
                 ex.message = ex.message if ex.message else str(ex)
-                print("Error in MarketAnalysis: {0}".format(ex.message))
-                traceback.print_exc()
+                self.logger.error("Error in MarketAnalysis: {0}\n".format(ex.message)
+                                  + traceback.format_exc())
             time.sleep(self.delete_thread_sleep)
-
-    @staticmethod
-    def print_traceback(ex, log_message):
-        ex.message = ex.message if ex.message else str(ex)
-        print("{0}: {1}".format(log_message, ex.message))
-        traceback.print_exc()
-
-    @staticmethod
-    def print_exception_error(ex, log_message, debug=False):
-        ex.message = ex.message if ex.message else str(ex)
-        print("{0}: {1}".format(log_message, ex.message))
-        if debug:
-            import traceback
-            ex_type, value, tb = sys.exc_info()
-            print("DEBUG: Class:{0} Args:{1}".format(ex.__class__, ex.args))
-            print("DEBUG: Type:{0} Value:{1} LineNo:{2}".format(ex_type, value, tb.tb_lineno))
-            traceback.print_exc()
 
     def update_market_thread(self, cur, levels=None):
         """
@@ -157,31 +140,34 @@ class MarketAnalysis(object):
         if levels is None:
             levels = self.recorded_levels
         db_con = self.create_connection(cur)
+        update_time = datetime.utcfromtimestamp(0)
         while True:
             try:
-                raw_data = self.api.return_loan_orders(cur, levels)['offers']
+                raw_data = self.api.return_loan_orders(cur, levels)
+
+                if (raw_data["update_time"] - update_time).total_seconds() > 0:
+                    update_time = raw_data["update_time"]
+                    market_data = []
+                    for i in xrange(levels):
+                        try:
+                            market_data.append(str(raw_data['offers'][i]['rate']))
+                            market_data.append(str(raw_data['offers'][i]['amount']))
+                        except IndexError:
+                            market_data.append("5")
+                            market_data.append("0.1")
+                    market_data.append('0')  # Percentile field not being filled yet.
+                    self.insert_into_db(db_con, market_data)
+
             except ApiError as ex:
                 if '429' in str(ex):
-                    if self.ma_debug_log:
-                        print("Caught ERR_RATE_LIMIT, sleeping capture and increasing request delay. Current"
-                              " {0}ms".format(self.api.req_period))
+                    self.logger.warning("Caught ERR_RATE_LIMIT, sleeping capture and increasing request delay. " +
+                                        "Current {0}ms".format(self.api.req_period))
                     time.sleep(130)
             except Exception as ex:
-                if self.ma_debug_log:
-                    self.print_traceback(ex, "Error in returning data from exchange")
-                else:
-                    print("Error in returning data from exchange, ignoring")
+                self.logger.error("Error in returning data from exchange: {} : {}".format(ex, raw_data))
+                self.logger.debug(traceback.format_exc())
 
-            market_data = []
-            for i in xrange(levels):
-                try:
-                    market_data.append(str(raw_data[i]['rate']))
-                    market_data.append(str(raw_data[i]['amount']))
-                except IndexError:
-                    market_data.append("5")
-                    market_data.append("0.1")
-            market_data.append('0')  # Percentile field not being filled yet.
-            self.insert_into_db(db_con, market_data)
+            time.sleep(0.5)
 
     def insert_into_db(self, db_con, market_data, levels=None):
             if levels is None:
@@ -194,7 +180,7 @@ class MarketAnalysis(object):
                 try:
                     db_con.execute(insert_sql)
                 except Exception as ex:
-                    self.print_traceback(ex, "Error inserting market data into DB")
+                    self.logger.error("Error inserting market data into DB: {}".format(ex))
 
     def delete_old_data(self, db_con, seconds):
         """
@@ -218,8 +204,8 @@ class MarketAnalysis(object):
         :param date_time: A python date time object
         :return: The number of days that have elapsed since date_time
         """
-        date1 = datetime.datetime.fromtimestamp(float(date_time))
-        now = datetime.datetime.now()
+        date1 = datetime.fromtimestamp(float(date_time))
+        now = datetime.utcnow()
         diff_days = (now - date1).days
         return diff_days
 
@@ -255,10 +241,9 @@ class MarketAnalysis(object):
         columns.extend(price_levels)
         try:
             df.columns = columns
-        except:
-            if self.ma_debug_log:
-                print("DEBUG:get_rate_list: cols: {0} rates:{1} db:{2}".format(columns, rates, db_con))
-            raise
+        except Exception as ex:
+            self.logger.error("get_rate_list: cols: {0} rates:{1} db:{2}".format(columns, rates, db_con))
+            raise ex
 
         # convert unixtimes to datetimes so we can resample
         df.time = pd.to_datetime(df.time, unit='s')
@@ -300,27 +285,27 @@ class MarketAnalysis(object):
             if not isinstance(rates, pd.DataFrame):
                 raise ValueError("Rates must be a Pandas DataFrame")
             if len(rates) == 0:
-                print("Rate list not populated")
-                if self.ma_debug_log:
-                    print("DEBUG:get_analysis_seconds: cur: {0} method:{1} rates:{2}".format(cur, method, rates))
+                self.logger.info("Rate list not populated")
+                self.logger.debug("get_analysis_seconds: cur: {0} method:{1} rates:{2}"
+                                  .format(cur, method, rates))
                 return 0
             if method == 'percentile':
                 return self.get_percentile(rates.rate0.values.tolist(), self.lending_style)
             if method == 'MACD':
                 macd_rate = truncate(self.get_MACD_rate(cur, rates), 6)
-                if self.ma_debug_log:
-                    print("Cur:{0}, MACD:{1:.6f}, Perc:{2:.6f}, Best:{3:.6f}"
-                          .format(cur, macd_rate, self.get_percentile(rates.rate0.values.tolist(), self.lending_style),
-                                  rates.rate0.iloc[-1]))
+                self.logger.debug("Cur:{0}, MACD:{1:.6f}, Perc:{2:.6f}, Best:{3:.6f}"
+                                  .format(cur, macd_rate,
+                                          self.get_percentile(rates.rate0.values.tolist(), self.lending_style),
+                                          rates.rate0.iloc[-1]))
                 return macd_rate
         except MarketDataException:
             if method != 'percentile':
-                print("Caught exception during {0} analysis, using percentile for now".format(method))
+                self.logger.warning("Caught exception during {0} analysis, using percentile for now".format(method))
                 return self.get_percentile(rates.rate0.values.tolist(), self.lending_style)
             else:
                 raise
         except Exception as ex:
-            self.print_exception_error(ex, error_msg, debug=self.ma_debug_log)
+            self.logger.error("{}\n{}\n{}".format(error_msg, ex, traceback.format_exc()))
             return 0
 
     @staticmethod
@@ -373,15 +358,15 @@ class MarketAnalysis(object):
         :retrun: A float of the suggested, calculated rate
         """
         if len(rates_df) < self.get_analysis_seconds('MACD') * (self.data_tolerance / 100):
-            print("{0} : Need more data for analysis, still collecting. I have {1}/{2} records"
-                  .format(cur, len(rates_df), int(self.get_analysis_seconds('MACD') * (self.data_tolerance / 100))))
+            self.logger.info("{0}: Need more data for analysis, still collecting. I have {1}/{2} records"
+                             .format(cur, len(rates_df),
+                                     int(self.get_analysis_seconds('MACD') * (self.data_tolerance / 100))))
             raise MarketDataException
 
         short_rate = rates_df.rate0.tail(self.MACD_short_win_seconds).mean()
         long_rate = rates_df.rate0.tail(self.MACD_long_win_seconds).mean()
 
-        if self.ma_debug_log:
-            sys.stdout.write("Short higher: ") if short_rate > long_rate else sys.stdout.write("Long  higher: ")
+        self.logger.debug("Short higher" if short_rate > long_rate else "Long higher")
 
         if short_rate > long_rate:
             if rates_df.rate0.iloc[-1] < short_rate:
@@ -407,7 +392,7 @@ class MarketAnalysis(object):
             con = sqlite.connect(db_path)
             return con
         except Error as ex:
-            print(ex.message)
+            self.logger.error(ex.message)
 
     def create_rate_table(self, db_con, levels):
         """

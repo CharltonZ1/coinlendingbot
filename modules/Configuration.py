@@ -33,7 +33,7 @@ def init(file_location, data=None):
 def has_option(category, option):
     try:
         return True if os.environ["{0}_{1}".format(category, option)] else _
-    except (KeyError, NameError): # KeyError for no env var, NameError for _ (empty var) and then to continue
+    except (KeyError, NameError):  # KeyError for no env var, NameError for _ (empty var) and then to continue
         return config.has_option(category, option)
 
 
@@ -193,8 +193,8 @@ def get_notification_config():
     notify_conf = {'enable_notifications': config.has_section('notifications')}
 
     # For boolean parameters
-    for conf in ['notify_tx_coins', 'notify_xday_threshold', 'notify_new_loans', 'notify_caught_exception', 'email', 'slack', 'telegram',
-                 'pushbullet', 'irc']:
+    for conf in ['notify_tx_coins', 'notify_xday_threshold', 'notify_new_loans', 'notify_caught_exception', 'email',
+                 'slack', 'telegram', 'pushbullet', 'irc']:
         notify_conf[conf] = getboolean('notifications', conf)
 
     # For string-based parameters
@@ -241,5 +241,3 @@ def get_plugins_config():
     if config.has_option("BOT", "plugins"):
         active_plugins = map(str.strip, config.get("BOT", "plugins").split(','))
     return active_plugins
-
-

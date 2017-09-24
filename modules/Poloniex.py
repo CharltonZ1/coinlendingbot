@@ -4,6 +4,7 @@ import hmac
 import json
 import socket
 import time
+from datetime import datetime
 import urllib
 import urllib2
 import threading
@@ -23,16 +24,14 @@ def post_process(before):
             for x in xrange(0, len(after['return'])):
                 if isinstance(after['return'][x], dict):
                     if 'datetime' in after['return'][x] and 'timestamp' not in after['return'][x]:
-                        after['return'][x]['timestamp'] = float(ExchangeApi.create_time_stamp(after['return'][x]['datetime']))
+                        after['return'][x]['timestamp'] = float(ExchangeApi.create_time_stamp(after['return'][x]['datetime']))  # nopep8
 
     return after
 
 
 class Poloniex(ExchangeApi):
-    def __init__(self, cfg, log):
-        super(Poloniex, self).__init__(cfg, log)
-        self.cfg = cfg
-        self.log = log
+    def __init__(self, cfg, weblog):
+        super(Poloniex, self).__init__(cfg, weblog)
         self.APIKey = self.cfg.get("API", "apikey", None)
         self.Secret = self.cfg.get("API", "secret", None)
         self.req_per_period = 6
@@ -112,7 +111,7 @@ class Poloniex(ExchangeApi):
             try:
                 data = json.loads(raw_polo_response)
                 polo_error_msg = data['error']
-            except:
+            except Exception:
                 if hasattr(ex, 'code') and (ex.code == 502 or ex.code in range(520, 527, 1)):
                     # 502 and 520-526 Bad Gateway so response is likely HTML from Cloudflare
                     polo_error_msg = 'API Error ' + str(ex.code) + \
@@ -245,7 +244,9 @@ class Poloniex(ExchangeApi):
         return self.api_query('withdraw', {"currency": currency, "amount": amount, "address": address})
 
     def return_loan_orders(self, currency, limit=0):
-        return self.api_query('returnLoanOrders', {"currency": currency, "limit": limit})
+        loan_orders = self.api_query('returnLoanOrders', {"currency": currency, "limit": limit})
+        loan_orders["update_time"] = datetime.utcnow()
+        return loan_orders
 
     # Toggles the auto renew setting for the specified orderNumber
     def toggle_auto_renew(self, order_number):

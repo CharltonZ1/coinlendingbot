@@ -6,18 +6,19 @@ import json
 import requests
 import time
 import threading
+import logging
 
 from modules.ExchangeApi import ExchangeApi
 from modules.ExchangeApi import ApiError
 from modules.Bitfinex2Poloniex import Bitfinex2Poloniex
 from modules.RingBuffer import RingBuffer
+from modules.websocket import ExchangeWsClient
 
 
 class Bitfinex(ExchangeApi):
-    def __init__(self, cfg, log):
-        super(Bitfinex, self).__init__(cfg, log)
-        self.cfg = cfg
-        self.log = log
+    def __init__(self, cfg, weblog):
+        super(Bitfinex, self).__init__(cfg, weblog)
+        self.logger = logging.getLogger(__name__)
         self.lock = threading.RLock()
         self.req_per_period = 1
         self.default_req_period = 1000  # milliseconds, 1000 = 60/min
@@ -28,13 +29,14 @@ class Bitfinex(ExchangeApi):
         self.secret = self.cfg.get("API", "secret", None)
         self.apiVersion = 'v1'
         self.symbols = []
-        self.ticker = {}
-        self.tickerTime = 0
-        self.usedCurrencies = []
         self.timeout = int(self.cfg.get("BOT", "timeout", 30, 1, 180))
-        self.api_debug_log = self.cfg.getboolean("BOT", "api_debug_log")
-        # Initialize usedCurrencies
-        _ = self.return_available_account_balances("lending")
+        self._init_websocket()
+
+    def _init_websocket(self):
+        self.websocket = ExchangeWsClient('BITFINEX')
+        self.websocket.start()
+        for pair in self._get_symbols():
+            self.websocket.subscribe_ticker(pair)
 
     @property
     def _nonce(self):
@@ -80,7 +82,7 @@ class Bitfinex(ExchangeApi):
                 r = requests.post(url, headers=payload, verify=verify, timeout=self.timeout)
 
             if r.status_code != 200:
-                if r.status_code == 502 or r.status_code in range(520, 527, 1):
+                if r.status_code == 502 or r.status_code in range(520, 530, 1):
                     raise ApiError('API Error ' + str(r.status_code) +
                                    ': The web server reported a bad gateway or gateway timeout error.')
                 elif r.status_code == 429:
@@ -142,10 +144,9 @@ class Bitfinex(ExchangeApi):
         return resp
 
     def return_loan_orders(self, currency, limit=0):
-        command = ('lendbook/' + currency + '?limit_asks=' + str(limit) + '&limit_bids=' + str(limit))
-        bfx_resp = self._get(command)
+        bfx_resp = self.websocket.return_lendingbook(currency, limit)
         resp = Bitfinex2Poloniex.convertLoanOrders(bfx_resp)
-
+        self.logger.debug("{} {}".format(currency, resp))
         return resp
 
     def return_active_loans(self):
@@ -161,51 +162,10 @@ class Bitfinex(ExchangeApi):
     def return_ticker(self):
         """
         The ticker is a high level overview of the state of the market
-        https://bitfinex.readme.io/v1/reference#rest-public-ticker
         """
-        t = int(time.time())
-        if t - self.tickerTime < 60:
-            return self.ticker
-
-        set_ticker_time = True
-
-        for symbol in self._get_symbols():
-            base = symbol[3:].upper()
-            curr = symbol[:3].upper()
-            if base in ['BTC', 'USD'] and (curr == 'BTC' or curr in self.usedCurrencies):
-                couple = (base + '_' + curr)
-                couple_reverse = (curr + '_' + base)
-
-                try:
-                    ticker = self._get('pubticker/' + symbol)
-
-                    if 'message' in ticker:
-                        raise ApiError("Error: {} ({})".format(ticker['message'], symbol))
-
-                    self.ticker[couple] = {
-                        "last": ticker['last_price'],
-                        "lowestAsk": ticker['ask'],
-                        "highestBid": ticker['bid'],
-                        "percentChange": "",
-                        "baseVolume": str(float(ticker['volume']) * float(ticker['mid'])),
-                        "quoteVolume": ticker['volume']
-                    }
-                    self.ticker[couple_reverse] = {
-                        "last": 1 / float(self.ticker[couple]['last']),
-                        "lowestAsk": 1 / float(self.ticker[couple]['lowestAsk']),
-                        "highestBid": 1 / float(self.ticker[couple]['highestBid'])
-                    }
-
-                except Exception as ex:
-                    self.log.log_error('Error retrieving ticker for {}: {}. Continue with next currency.'
-                                       .format(symbol, ex.message))
-                    set_ticker_time = False
-                    continue
-
-        if set_ticker_time and len(self.ticker) > 2:  # USD_BTC and BTC_USD are always in
-            self.tickerTime = t
-
-        return self.ticker
+        bfx_ticker = self.websocket.return_ticker()
+        ticker = Bitfinex2Poloniex.convertTicker(bfx_ticker)
+        return ticker
 
     def return_available_account_balances(self, account):
         """
@@ -214,11 +174,6 @@ class Bitfinex(ExchangeApi):
         """
         bfx_resp = self._post('balances')
         balances = Bitfinex2Poloniex.convertAccountBalances(bfx_resp, account)
-
-        if 'lending' in balances:
-            for curr in balances['lending']:
-                if curr not in self.usedCurrencies:
-                    self.usedCurrencies.append(curr)
 
         return balances
 

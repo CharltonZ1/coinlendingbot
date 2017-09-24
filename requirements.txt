@@ -3,3 +3,5 @@ pandas
 hypothesis
 requests
 pytz
+autobahn
+twisted

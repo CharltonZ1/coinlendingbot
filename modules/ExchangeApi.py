@@ -30,11 +30,12 @@ class ExchangeApi(object):
 
         return new_method
 
-    @abc.abstractmethod
-    def __init__(self, cfg, log):
+    def __init__(self, cfg, weblog):
         """
         Constructor
         """
+        self.cfg = cfg
+        self.weblog = weblog
 
     @abc.abstractmethod
     def limit_request_rate(self):

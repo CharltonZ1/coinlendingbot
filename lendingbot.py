@@ -1,7 +1,10 @@
 # coding=utf-8
+import logging
+import logging.config
 import argparse
 import os
 import sys
+import shutil
 import time
 import traceback
 from decimal import Decimal
@@ -25,6 +28,7 @@ except IOError:
 
 parser = argparse.ArgumentParser()  # Start args.
 parser.add_argument("-cfg", "--config", help="Location of custom configuration file, overrides settings below")
+parser.add_argument("-logcfg", "--logconfig", help="Location of logging configuration file.")
 parser.add_argument("-dry", "--dryrun", help="Make pretend orders", action="store_true")
 args = parser.parse_args()  # End args.
 
@@ -34,7 +38,17 @@ if args.config:
     config_location = args.config
 else:
     config_location = 'default.cfg'
+if args.logconfig:
+    logconfig_location = args.logconfig
+else:
+    logconfig_location = 'logging.ini'
 # End handling args.
+
+# Initialize Python logging (console or file)
+if not os.path.isfile(logconfig_location):
+    shutil.copy('loggining.ini.example', logconfig_location)
+logging.config.fileConfig(logconfig_location)
+logger = logging.getLogger(__name__)
 
 # Config format: Config.get(category, option, default_value=False, lower_limit=False, upper_limit=False)
 # A default_value "None" means that the option is required and the bot will not run without it.
@@ -56,18 +70,22 @@ if web_server_enabled:
     if json_output_enabled is False:
         # User wants webserver enabled. Must have JSON enabled. Force logging with defaults.
         json_output_enabled = True
-        jsonfile = Config.get('BOT', 'jsonfile', 'www/botlog.json')
+        jsonfile = Config.get('BOT', 'jsonfile', 'www/botweblog.json')
 
     import modules.WebServer as WebServer
     WebServer.initialize_web_server(Config)
 
-# Configure logging
-log = Logger(jsonfile, Decimal(Config.get('BOT', 'jsonlogsize', 200)), exchange)
+# Configure logging to display on webpage
+weblog = Logger(jsonfile, Decimal(Config.get('BOT', 'jsonlogsize', 200)), exchange)
+
+welcome = 'Welcome to {} on {}'.format(Config.get("BOT", "label", "Lending Bot"), exchange)
+logger.info(welcome)
+weblog.log(welcome)
 
 # initialize the remaining stuff
-api = ExchangeApiFactory.createApi(exchange, Config, log)
-MaxToLend.init(Config, log)
-Data.init(api, log)
+api = ExchangeApiFactory.createApi(exchange, Config, weblog)
+MaxToLend.init(Config, weblog)
+Data.init(api, weblog)
 Config.init(config_location, Data)
 notify_conf = Config.get_notification_config()
 if Config.has_option('MarketAnalysis', 'analyseCurrencies'):
@@ -77,12 +95,11 @@ if Config.has_option('MarketAnalysis', 'analyseCurrencies'):
     analysis.run()
 else:
     analysis = None
-Lending.init(Config, api, log, Data, MaxToLend, dry_run, analysis, notify_conf)
+Lending.init(Config, api, weblog, Data, MaxToLend, dry_run, analysis, notify_conf)
 
 # load plugins
-PluginsManager.init(Config, api, log, notify_conf)
+PluginsManager.init(Config, api, weblog, notify_conf)
 
-print 'Welcome to ' + Config.get("BOT", "label", "Lending Bot") + ' on ' + exchange
 
 try:
     while True:
@@ -93,55 +110,56 @@ try:
             Lending.cancel_all()
             Lending.lend_all()
             PluginsManager.after_lending()
-            log.refreshStatus(Data.stringify_total_lent(*Data.get_total_lent()),
-                              Data.get_max_duration(end_date, "status"))
-            log.persistStatus()
+            weblog.refreshStatus(Data.stringify_total_lent(*Data.get_total_lent()),
+                                 Data.get_max_duration(end_date, "status"))
+            weblog.persistStatus()
             sys.stdout.flush()
             time.sleep(Lending.get_sleep_time())
         except KeyboardInterrupt:
             # allow existing the main bot loop
             raise
         except Exception as ex:
-            log.log_error(ex.message)
-            log.persistStatus()
+            weblog.log_error(ex.message)
+            weblog.persistStatus()
             if 'Invalid API key' in ex.message:
-                print "!!! Troubleshooting !!!"
-                print "Are your API keys correct? No quotation. Just plain keys."
+                logger.critical("!!! Troubleshooting !!! Are your API keys correct? No quotation. Just plain keys.")
                 exit(1)
             elif 'Nonce must be greater' in ex.message:
-                print "!!! Troubleshooting !!!"
-                print "Are you reusing the API key in multiple applications? Use a unique key for every application."
+                logger.critical("!!! Troubleshooting !!! Are you reusing the API key in multiple applications? "
+                                + "Use a unique key for every application.")
                 exit(1)
             elif 'Permission denied' in ex.message:
-                print "!!! Troubleshooting !!!"
-                print "Are you using IP filter on the key? Maybe your IP changed?"
+                logger.critical("!!! Troubleshooting !!! Are you using IP filter on the key? Maybe your IP changed?")
                 exit(1)
             elif 'timed out' in ex.message:
-                print "Timed out, will retry in " + str(Lending.get_sleep_time()) + "sec"
+                logger.warn("Timed out, will retry in " + str(Lending.get_sleep_time()) + "sec")
             elif isinstance(ex, BadStatusLine):
-                print "Caught BadStatusLine exception from Poloniex, ignoring."
+                logger.warn("Caught BadStatusLine exception from Poloniex, ignoring.")
             elif 'Error 429' in ex.message:
                 additional_sleep = max(130.0-Lending.get_sleep_time(), 0)
                 sum_sleep = additional_sleep + Lending.get_sleep_time()
-                log.log_error('IP has been banned due to many requests. Sleeping for {} seconds'.format(sum_sleep))
+                msg = 'IP has been banned due to many requests. Sleeping for {} seconds'.format(sum_sleep)
+                weblog.log_error(msg)
+                logger.warn(msg)
                 if Config.has_option('MarketAnalysis', 'analyseCurrencies'):
                     if api.req_period <= api.default_req_period * 1.5:
                         api.req_period += 3
-                    if Config.getboolean('MarketAnalysis', 'ma_debug_log'):
-                        print("Caught ERR_RATE_LIMIT, sleeping capture and increasing request delay. Current"
-                              " {0}ms".format(api.req_period))
-                        log.log_error('Expect this 130s ban periodically when using MarketAnalysis, it will fix itself')
+                    logger.warn("Caught ERR_RATE_LIMIT, sleeping capture and increasing request delay. Current"
+                                + " {0}ms".format(api.req_period))
+                    weblog.log_error('Expect this 130s ban periodically when using MarketAnalysis, '
+                                     + 'it will fix itself')
                 time.sleep(additional_sleep)
             # Ignore all 5xx errors (server error) as we can't do anything about it (https://httpstatuses.com/)
             elif isinstance(ex, URLError):
-                print "Caught {0} from exchange, ignoring.".format(ex.message)
+                logger.error("Caught {0} from exchange, ignoring.".format(ex.message))
             elif isinstance(ex, ApiError):
-                print "Caught {0} reading from exchange API, ignoring.".format(ex.message)
+                logger.error("Caught {0} reading from exchange API, ignoring.".format(ex.message))
             else:
-                print traceback.format_exc()
-                print "v{0} Unhandled error, please open a Github issue so we can fix it!".format(Data.get_bot_version())
+                logger.error(traceback.format_exc())
+                logger.error("v{0} Unhandled error, please open a Github issue so we can fix it!"
+                             .format(Data.get_bot_version()))
                 if notify_conf['notify_caught_exception']:
-                    log.notify("{0}\n-------\n{1}".format(ex, traceback.format_exc()), notify_conf)
+                    weblog.notify("{0}\n-------\n{1}".format(ex, traceback.format_exc()), notify_conf)
             sys.stdout.flush()
             time.sleep(Lending.get_sleep_time())
 
@@ -150,6 +168,6 @@ except KeyboardInterrupt:
     if web_server_enabled:
         WebServer.stop_web_server()
     PluginsManager.on_bot_exit()
-    log.log('bye')
-    print 'bye'
+    weblog.log('bye')
+    logger.info('bye')
     os._exit(0)  # Ad-hoc solution in place of 'exit(0)' TODO: Find out why non-daemon thread(s) are hanging on exit
