@@ -46,7 +46,7 @@ else:
 
 # Initialize Python logging (console or file)
 if not os.path.isfile(logconfig_location):
-    shutil.copy('loggining.ini.example', logconfig_location)
+    shutil.copy('logging.ini.example', logconfig_location)
 logging.config.fileConfig(logconfig_location)
 logger = logging.getLogger(__name__)
 
