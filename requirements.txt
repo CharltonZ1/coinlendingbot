@@ -3,5 +3,7 @@ pandas
 hypothesis
 requests
 pytz
+pyOpenSSL
+service_identity
 autobahn
 twisted

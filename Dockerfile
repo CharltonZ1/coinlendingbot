@@ -9,7 +9,11 @@ LABEL "project.home"="https://github.com/BitBotFactory/poloniexlendingbot"
 WORKDIR /usr/src/app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r ./requirements.txt
+RUN apt-get update && apt-get -y upgrade && \
+    apt-get -y install build-essential openssl && \
+    pip install --no-cache-dir -r ./requirements.txt && \
+    apt-get -y autoremove build-essential && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY . .
 

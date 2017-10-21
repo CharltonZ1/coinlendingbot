@@ -1,9 +1,10 @@
 *.pyc
 *.swp
 default.cfg
+logging.ini
 www/botlog.json
 nohup.out
-error.log
+*.log*
 *.idea
 *.csv
 *.sqlite3
