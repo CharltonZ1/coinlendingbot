@@ -65,13 +65,15 @@ class Bitfinex2Poloniex(object):
         Converts from 'lendbook' to 'returnLoanOrders'
         '''
 
-        plxOrders = {}
-        plxOrders['offers'] = []
-        plxOrders['demands'] = []
+        plxOrders = {
+            'offers': [],
+            'demands': [],
+            'update_time': bfxLendbook['update_time']
+        }
 
         for bid in bfxLendbook['bids']:
             plxOrders['demands'].append({
-                'rate': '{0:0.8f}'.format(float(bid['rate']) / 36500),
+                'rate': '{0:0.8f}'.format(float(bid['rate'])),
                 'amount': bid['amount'],
                 'rangeMin': '2',
                 'rangeMax': bid['period']
@@ -79,7 +81,7 @@ class Bitfinex2Poloniex(object):
 
         for ask in bfxLendbook['asks']:
             plxOrders['offers'].append({
-                'rate': '{0:0.8f}'.format(float(ask['rate']) / 36500),
+                'rate': '{0:0.8f}'.format(float(ask['rate'])),
                 'amount': ask['amount'],
                 'rangeMin': '2',
                 'rangeMax': ask['period']
@@ -113,3 +115,22 @@ class Bitfinex2Poloniex(object):
                 balances[account][curr] = balance['available']
 
         return balances
+
+    @staticmethod
+    def convertTicker(bfxTicker):
+        '''
+        Converts Bitfinex websocket ticket data to Poloniex format
+        '''
+        ticker = {}
+        for t in bfxTicker:
+            couple = "{}_{}".format(t[3:], t[:3])
+            ticker[couple] = {
+                "last": bfxTicker[t]['last_price'],
+                "lowestAsk": bfxTicker[t]['ask'],
+                "highestBid": bfxTicker[t]['bid'],
+                "percentChange": "",
+                "baseVolume": str(float(bfxTicker[t]['volume']) * float(bfxTicker[t]['last_price'])),
+                "quoteVolume": bfxTicker[t]['volume'],
+                "update_time": bfxTicker[t]['update_time']
+            }
+        return ticker

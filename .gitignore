@@ -1,11 +1,14 @@
 *.pyc
 *.swp
 *.cfg
+*.ini
 *.json
 nohup.out
-error.log
+*.log*
 *.idea
 *.csv
 *.sqlite3
 *.db*
 docs/_build/
+.cache
+__pycache__

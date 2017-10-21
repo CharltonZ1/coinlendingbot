@@ -1,0 +1,35 @@
+[loggers]
+keys = root
+
+[handlers]
+keys = consoleHandler,fileHandler
+
+[formatters]
+keys = defaultFormatter,debugFormatter
+
+[handler_consoleHandler]
+class = StreamHandler
+level = DEBUG
+formatter = defaultFormatter
+args = (sys.stdout,)
+
+[handler_fileHandler]
+class = handlers.RotatingFileHandler
+level=DEBUG
+formatter = debugFormatter
+args=('logs/lendingbot.log', 'a', 50*1024*1024, 50) 
+
+[formatter_debugFormatter]
+format = %(asctime)s|%(levelname)s|%(filename)s:%(lineno)s|%(name)s:%(funcName)s> %(message)s
+datefmt =
+
+[formatter_defaultFormatter]
+format = %(asctime)s|%(levelname)s|%(name)s> %(message)s
+datefmt =
+
+[logger_root]
+level = INFO
+handlers = consoleHandler
+#level = DEBUG
+#handlers = fileHandler
+
