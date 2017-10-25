@@ -1,6 +1,6 @@
 *.pyc
 *.swp
-default.cfg
+*.cfg
 logging.ini
 www/botlog.json
 nohup.out
@@ -11,3 +11,6 @@ nohup.out
 
 docs
 market_data
+.git*
+.dockerignore
+__pycache__
