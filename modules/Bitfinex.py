@@ -137,14 +137,17 @@ class Bitfinex(ExchangeApi):
         https://bitfinex.readme.io/v1/reference#rest-auth-offers
         """
         bfx_resp = self._post('offers')
-        resp = Bitfinex2Poloniex.convertOpenLoanOffers(bfx_resp)
+        resp = Bitfinex2Poloniex.convertOpenLoanOffers(bfx_resp, self.cfg.get_all_currencies())
 
         return resp
 
     def return_loan_orders(self, currency, limit=0):
-        command = ('lendbook/' + currency + '?limit_asks=' + str(limit) + '&limit_bids=' + str(limit))
-        bfx_resp = self._get(command)
-        resp = Bitfinex2Poloniex.convertLoanOrders(bfx_resp)
+        if currency in self.cfg.get_all_currencies():
+            command = ('lendbook/' + currency + '?limit_asks=' + str(limit) + '&limit_bids=' + str(limit))
+            bfx_resp = self._get(command)
+            resp = Bitfinex2Poloniex.convertLoanOrders(bfx_resp)
+        else:
+            resp = {'offers': [], 'demands': []}
 
         return resp
 
@@ -154,7 +157,7 @@ class Bitfinex(ExchangeApi):
         https://bitfinex.readme.io/v1/reference#rest-auth-offers
         """
         bfx_resp = self._post('credits')
-        resp = Bitfinex2Poloniex.convertActiveLoans(bfx_resp)
+        resp = Bitfinex2Poloniex.convertActiveLoans(bfx_resp, self.cfg.get_all_currencies())
 
         return resp
 
@@ -213,7 +216,7 @@ class Bitfinex(ExchangeApi):
         https://bitfinex.readme.io/v1/reference#rest-auth-wallet-balances
         """
         bfx_resp = self._post('balances')
-        balances = Bitfinex2Poloniex.convertAccountBalances(bfx_resp, account)
+        balances = Bitfinex2Poloniex.convertAccountBalances(bfx_resp, self.cfg.get_all_currencies(), account)
 
         if 'lending' in balances:
             for curr in balances['lending']:
