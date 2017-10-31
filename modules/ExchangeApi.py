@@ -30,11 +30,13 @@ class ExchangeApi(object):
 
         return new_method
 
-    @abc.abstractmethod
     def __init__(self, cfg, log):
         """
         Constructor
         """
+        self.cfg = cfg
+        self.log = log
+        self.currency_whitelist = self.cfg.get_all_currencies()
 
     @abc.abstractmethod
     def limit_request_rate(self):
@@ -153,6 +155,14 @@ class ExchangeApi(object):
         """
         Transfers values from one account/wallet to another
         """
+
+    def check_currency_whitelist(self, currency):
+        """
+        Checks if currency is in the whitelist,
+        if not, raise an exception
+        """
+        if currency not in self.currency_whitelist:
+            raise ApiError("Currency {} not in whitelist.".format(currency))
 
 
 class ApiError(Exception):

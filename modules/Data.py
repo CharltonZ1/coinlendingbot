@@ -81,7 +81,7 @@ def stringify_total_lent(total_lent, rate_lent):
 
 def update_conversion_rates(output_currency, json_output_enabled):
     if json_output_enabled:
-        total_lent = get_total_lent()[0]
+        total_lent = get_lending_currencies()
         ticker_response = api.return_ticker()
         output_currency_found = False
         # Set this up now in case we get an exception later and don't have a currency to use
@@ -90,7 +90,6 @@ def update_conversion_rates(output_currency, json_output_enabled):
         # default output currency is BTC
         if output_currency == 'BTC':
             output_currency_found = True
-
         for couple in ticker_response:
             currencies = couple.split('_')
             ref = currencies[0]
@@ -124,9 +123,6 @@ def update_conversion_rates(output_currency, json_output_enabled):
 
 def get_lending_currencies():
     currencies = []
-    total_lent = get_total_lent()[0]
-    for cur in total_lent:
-        currencies.append(cur)
     lending_balances = api.return_available_account_balances("lending")['lending']
     for cur in lending_balances:
         currencies.append(cur)
@@ -147,7 +143,7 @@ def truncate(f, n):
 def get_bot_version():
     import subprocess
     try:
-        output = subprocess.check_output(["git", "rev-list","--count", "HEAD"])
+        output = subprocess.check_output(["git", "rev-list", "--count", "HEAD"])
         int(output)
         return output
     except Exception:

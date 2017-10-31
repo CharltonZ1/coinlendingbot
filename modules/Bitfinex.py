@@ -16,8 +16,6 @@ from modules.RingBuffer import RingBuffer
 class Bitfinex(ExchangeApi):
     def __init__(self, cfg, log):
         super(Bitfinex, self).__init__(cfg, log)
-        self.cfg = cfg
-        self.log = log
         self.lock = threading.RLock()
         self.req_per_period = 1
         self.default_req_period = 1000  # milliseconds, 1000 = 60/min
@@ -122,11 +120,12 @@ class Bitfinex(ExchangeApi):
         """
         if len(self.symbols) == 0:
             bfx_resp = self._get('symbols')
-            all_currencies = self.cfg.get_all_currencies()
+            output_currency = self.cfg.get('BOT', 'outputCurrency', 'BTC')
             for symbol in bfx_resp:
                 base = symbol[3:].upper()
                 curr = symbol[:3].upper()
-                if base in ['USD', 'BTC'] and curr in all_currencies:
+                if ((base in [output_currency, 'BTC'] or base in self.currency_whitelist)
+                   and (curr in self.currency_whitelist or curr in [output_currency, 'BTC'])):
                     self.symbols.append(symbol)
 
         return self.symbols
@@ -137,17 +136,16 @@ class Bitfinex(ExchangeApi):
         https://bitfinex.readme.io/v1/reference#rest-auth-offers
         """
         bfx_resp = self._post('offers')
-        resp = Bitfinex2Poloniex.convertOpenLoanOffers(bfx_resp, self.cfg.get_all_currencies())
+        resp = Bitfinex2Poloniex.convertOpenLoanOffers(bfx_resp, self.currency_whitelist)
 
         return resp
 
     def return_loan_orders(self, currency, limit=0):
-        if currency in self.cfg.get_all_currencies():
-            command = ('lendbook/' + currency + '?limit_asks=' + str(limit) + '&limit_bids=' + str(limit))
-            bfx_resp = self._get(command)
-            resp = Bitfinex2Poloniex.convertLoanOrders(bfx_resp)
-        else:
-            resp = {'offers': [], 'demands': []}
+        self.check_currency_whitelist(currency)
+
+        command = ('lendbook/' + currency + '?limit_asks=' + str(limit) + '&limit_bids=' + str(limit))
+        bfx_resp = self._get(command)
+        resp = Bitfinex2Poloniex.convertLoanOrders(bfx_resp)
 
         return resp
 
@@ -157,7 +155,7 @@ class Bitfinex(ExchangeApi):
         https://bitfinex.readme.io/v1/reference#rest-auth-offers
         """
         bfx_resp = self._post('credits')
-        resp = Bitfinex2Poloniex.convertActiveLoans(bfx_resp, self.cfg.get_all_currencies())
+        resp = Bitfinex2Poloniex.convertActiveLoans(bfx_resp, self.currency_whitelist)
 
         return resp
 
@@ -171,39 +169,37 @@ class Bitfinex(ExchangeApi):
             return self.ticker
 
         set_ticker_time = True
-
         for symbol in self._get_symbols():
             base = symbol[3:].upper()
             curr = symbol[:3].upper()
-            if base in ['BTC', 'USD'] and (curr == 'BTC' or curr in self.usedCurrencies):
-                couple = (base + '_' + curr)
-                couple_reverse = (curr + '_' + base)
+            couple = (base + '_' + curr)
+            couple_reverse = (curr + '_' + base)
 
-                try:
-                    ticker = self._get('pubticker/' + symbol)
+            try:
+                ticker = self._get('pubticker/' + symbol)
 
-                    if 'message' in ticker:
-                        raise ApiError("Error: {} ({})".format(ticker['message'], symbol))
+                if 'message' in ticker:
+                    raise ApiError("Error: {} ({})".format(ticker['message'], symbol))
 
-                    self.ticker[couple] = {
-                        "last": ticker['last_price'],
-                        "lowestAsk": ticker['ask'],
-                        "highestBid": ticker['bid'],
-                        "percentChange": "",
-                        "baseVolume": str(float(ticker['volume']) * float(ticker['mid'])),
-                        "quoteVolume": ticker['volume']
-                    }
-                    self.ticker[couple_reverse] = {
-                        "last": 1 / float(self.ticker[couple]['last']),
-                        "lowestAsk": 1 / float(self.ticker[couple]['lowestAsk']),
-                        "highestBid": 1 / float(self.ticker[couple]['highestBid'])
-                    }
+                self.ticker[couple] = {
+                    "last": ticker['last_price'],
+                    "lowestAsk": ticker['ask'],
+                    "highestBid": ticker['bid'],
+                    "percentChange": "",
+                    "baseVolume": str(float(ticker['volume']) * float(ticker['mid'])),
+                    "quoteVolume": ticker['volume']
+                }
+                self.ticker[couple_reverse] = {
+                    "last": 1 / float(self.ticker[couple]['last']),
+                    "lowestAsk": 1 / float(self.ticker[couple]['lowestAsk']),
+                    "highestBid": 1 / float(self.ticker[couple]['highestBid'])
+                }
 
-                except Exception as ex:
-                    self.log.log_error('Error retrieving ticker for {}: {}. Continue with next currency.'
-                                       .format(symbol, ex.message))
-                    set_ticker_time = False
-                    continue
+            except Exception as ex:
+                self.log.log_error('Error retrieving ticker for {}: {}. Continue with next currency.'
+                                   .format(symbol, ex.message))
+                set_ticker_time = False
+                continue
 
         if set_ticker_time and len(self.ticker) > 2:  # USD_BTC and BTC_USD are always in
             self.tickerTime = t
@@ -216,7 +212,7 @@ class Bitfinex(ExchangeApi):
         https://bitfinex.readme.io/v1/reference#rest-auth-wallet-balances
         """
         bfx_resp = self._post('balances')
-        balances = Bitfinex2Poloniex.convertAccountBalances(bfx_resp, self.cfg.get_all_currencies(), account)
+        balances = Bitfinex2Poloniex.convertAccountBalances(bfx_resp, self.currency_whitelist, account)
 
         if 'lending' in balances:
             for curr in balances['lending']:
@@ -230,6 +226,8 @@ class Bitfinex(ExchangeApi):
         Cancels an offer
         https://bitfinex.readme.io/v1/reference#rest-auth-cancel-offer
         """
+        check_currency_whitelist(currency)
+
         payload = {
             "offer_id": order_number,
         }
@@ -254,6 +252,7 @@ class Bitfinex(ExchangeApi):
         Creates a loan offer for a given currency.
         https://bitfinex.readme.io/v1/reference#rest-auth-new-offer
         """
+        check_currency_whitelist(currency)
 
         payload = {
             "currency": currency,
@@ -291,7 +290,7 @@ class Bitfinex(ExchangeApi):
         https://bitfinex.readme.io/v1/reference#rest-auth-wallet-balances
         """
         balances = self.return_available_account_balances('exchange')
-        return_dict = {cur: u'0.00000000' for cur in self.cfg.get_all_currencies()}
+        return_dict = {cur: u'0.00000000' for cur in self.currency_whitelist}
         return_dict.update(balances['exchange'])
         return return_dict
 
@@ -300,6 +299,8 @@ class Bitfinex(ExchangeApi):
         Transfers values from one account/wallet to another
         https://bitfinex.readme.io/v1/reference#rest-auth-transfer-between-wallets
         """
+        check_currency_whitelist(currency)
+
         account_map = {
             'margin': 'trading',
             'lending': 'deposit',
@@ -327,8 +328,7 @@ class Bitfinex(ExchangeApi):
         https://bitfinex.readme.io/v1/reference#rest-auth-balance-history
         """
         history = []
-        all_currencies = self.cfg.get_all_currencies()
-        for curr in all_currencies:
+        for curr in self.currency_whitelist:
             payload = {
                 "currency": curr,
                 "since": str(start),

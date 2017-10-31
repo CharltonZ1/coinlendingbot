@@ -16,13 +16,13 @@ class Bitfinex2Poloniex(object):
         return dt.strftime('%Y-%m-%d %H:%M:%S')
 
     @staticmethod
-    def convertOpenLoanOffers(bfxOffers, all_currencies):
+    def convertOpenLoanOffers(bfxOffers, currency_list):
         '''
         Convert from "offers" to "returnOpenLoanOffers"
         '''
         plxOffers = {}
         for offer in bfxOffers:
-            if offer['currency'] in all_currencies:
+            if offer['currency'] in currency_list:
                 if offer['currency'] not in plxOffers:
                     plxOffers[offer['currency']] = []
 
@@ -39,7 +39,7 @@ class Bitfinex2Poloniex(object):
         return plxOffers
 
     @staticmethod
-    def convertActiveLoans(bfxOffers, all_currencies):
+    def convertActiveLoans(bfxOffers, currency_list):
         '''
         Convert from "credits" to "returnActiveLoans"
         '''
@@ -48,7 +48,7 @@ class Bitfinex2Poloniex(object):
         plxOffers['provided'] = []
         plxOffers['used'] = []
         for offer in bfxOffers:
-            if offer['currency'] in all_currencies:
+            if offer['currency'] in currency_list:
                 plxOffers['provided'].append({
                     "id": offer['id'],
                     "currency": offer['currency'],
@@ -90,7 +90,7 @@ class Bitfinex2Poloniex(object):
         return plxOrders
 
     @staticmethod
-    def convertAccountBalances(bfxBalances, all_currencies, account):
+    def convertAccountBalances(bfxBalances, currency_list, account):
         '''
         Converts from 'balances' to 'returnAvailableAccountBalances'
         '''
@@ -112,7 +112,7 @@ class Bitfinex2Poloniex(object):
                 continue
             if (account == '' or account == accountMap[balance['type']]) and float(balance['amount']) > 0:
                 curr = balance['currency'].upper()
-                if curr in all_currencies:
+                if curr in currency_list:
                     balances[account][curr] = balance['available']
 
         return balances
