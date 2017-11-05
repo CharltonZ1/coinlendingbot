@@ -123,13 +123,13 @@ function updateRawValues (rawData) {
     var compactLog = 'log' in rawData[currency] ? rawData[currency]['log'] : ''
 
     if (currency === 'BTC') {
-            // no bids for BTC provided by poloniex
-            // this is added so BTC can be handled like other coins for conversions
+      // no bids for BTC provided by poloniex
+      // this is added so BTC can be handled like other coins for conversions
       highestBidBTC = 1
     }
 
     if ((!isNaN(averageLendingRate) && !isNaN(lentSum)) || !isNaN(totalCoins)) {
-            // cover cases where totalCoins isn't updated because all coins are lent
+      // cover cases where totalCoins isn't updated because all coins are lent
       if (isNaN(totalCoins) && !isNaN(lentSum)) {
         totalCoins = lentSum
       }
@@ -143,11 +143,11 @@ function updateRawValues (rawData) {
           totalBTCEarnings[timespan.name] = 0
         }
 
-                // calculate coin earnings
+        // calculate coin earnings
         var timespanEarning = timespan.calcEarnings(lentSum, rate)
         earnings += timespan.formatEarnings(currency, timespanEarning, true)
 
-                // sum BTC earnings for all coins
+        // sum BTC earnings for all coins
         if (!isNaN(highestBidBTC)) {
           var timespanEarningBTC = timespan.calcEarnings(lentSum * highestBidBTC, rate)
           totalBTCEarnings[timespan.name] += timespanEarningBTC
@@ -189,7 +189,7 @@ function updateRawValues (rawData) {
                     "<div class='inlinediv' >" + printFloat(yearlyRate, 2) + '% Year<br/>' +
                     printFloat(yearlyRateComp, 2) + '% Year' + compoundRateText + '</div>' ]
 
-            // print coin status
+      // print coin status
       var row = table.insertRow()
       for (var i = 0; i < rowValues.length; ++i) {
         var cell = row.appendChild(document.createElement('td'))
@@ -250,15 +250,15 @@ function loadData () {
     reader.readAsText(localFile, 'utf-8')
     setTimeout(loadData, refreshRate * 1000)
   } else {
-        // expect the botlog.json to be in the same folder on the webserver
+    // expect the botlog.json to be in the same folder on the webserver
     var file = 'botlog.json'
     $.getJSON(file, function (data) {
       updateJson(data)
-            // reload every 30sec
+      // reload every 30sec
       setTimeout(loadData, refreshRate * 1000)
     }).fail(function (d, textStatus, error) {
       $('#status').text('getJSON failed, status: ' + textStatus + ', error: ' + error)
-            // retry after 60sec
+      // retry after 60sec
       setTimeout(loadData, 60000)
     })
   }
@@ -302,11 +302,11 @@ function setEffRateMode () {
   var q = location.search.match(/[?&]effrate=[^&]+/)
 
   if (q) {
-        // console.log('Got effective rate mode from URI');
+    // console.log('Got effective rate mode from URI');
     effRateMode = q[0].split('=')[1]
   } else {
     if (localStorage.effRateMode) {
-            // console.log('Got effective rate mode from localStorage');
+      // console.log('Got effective rate mode from localStorage');
       effRateMode = localStorage.effRateMode
     }
   }
@@ -386,24 +386,24 @@ function loadSettings () {
 }
 
 function doSave () {
-    // Validation
+  // Validation
   var tempRefreshRate = $('#refresh_interval').val()
   if (tempRefreshRate < 10 || tempRefreshRate > 60) {
     alert('Please input a value between 10 and 60 for refresh rate')
     return false
   }
 
-    // Refresh rate
+  // Refresh rate
   localStorage.setItem('refreshRate', tempRefreshRate)
 
-    // Time spans
+  // Time spans
   var timespanNames = []
   $('input[type="checkbox"]:checked').each(function (i, c) {
     timespanNames.push($(c).attr('data-timespan'))
   })
   localStorage.setItem('timespanNames', JSON.stringify(timespanNames))
 
-    // Bitcoin Display Unit
+  // Bitcoin Display Unit
   localStorage.displayUnitText = $('input[name="btcDisplayUnit"]:checked').val()
   btcDisplayUnitsModes.forEach(function (unit) {
     if (unit.name === localStorage.displayUnitText) {
@@ -411,13 +411,13 @@ function doSave () {
     }
   })
 
-    // OutputCurrencyDisplayMode
+  // OutputCurrencyDisplayMode
   localStorage.outputCurrencyDisplayModeText = $('input[name="outputCurrencyDisplayMode"]:checked').val()
   if (validOutputCurrencyDisplayModes.indexOf(localStorage.outputCurrencyDisplayModeText) !== -1) {
     outputCurrencyDisplayMode = localStorage.outputCurrencyDisplayModeText
   }
 
-    // Effective rate calculation
+  // Effective rate calculation
   localStorage.effRateMode = $('input[name="effRateMode"]:checked').val()
   if (validEffRateModes.indexOf(localStorage.effRateMode) !== -1) {
     effRateMode = localStorage.effRateMode

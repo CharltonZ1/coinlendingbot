@@ -125,10 +125,14 @@ class Bitfinex(ExchangeApi):
         if len(self.symbols) == 0:
             bfx_resp = self._get('symbols')
             all_currencies = self.cfg.get_all_currencies()
+            output_currency = self.cfg.get_output_currency()
+            if output_currency not in all_currencies:
+                all_currencies.append(output_currency)
             for symbol in bfx_resp:
                 base = symbol[3:].upper()
                 curr = symbol[:3].upper()
-                if base in ['USD', 'BTC'] and curr in all_currencies:
+                if ((base == 'BTC' and curr in all_currencies) or
+                   (base in all_currencies and curr == 'BTC')):
                     self.symbols.append(symbol)
 
         return self.symbols
@@ -165,6 +169,7 @@ class Bitfinex(ExchangeApi):
         """
         bfx_ticker = self.websocket.return_ticker()
         ticker = Bitfinex2Poloniex.convertTicker(bfx_ticker)
+        self.logger.debug('ticker: {}'.format(ticker))
         return ticker
 
     def return_available_account_balances(self, account):

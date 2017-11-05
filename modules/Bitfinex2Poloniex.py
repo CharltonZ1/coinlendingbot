@@ -119,18 +119,22 @@ class Bitfinex2Poloniex(object):
     @staticmethod
     def convertTicker(bfxTicker):
         '''
-        Converts Bitfinex websocket ticket data to Poloniex format
+        Converts Bitfinex websocket ticker data to Poloniex format
         '''
         ticker = {}
         for t in bfxTicker:
             couple = "{}_{}".format(t[3:], t[:3])
+            couple_reverse = "{}_{}".format(t[:3], t[3:])
             ticker[couple] = {
                 "last": bfxTicker[t]['last_price'],
                 "lowestAsk": bfxTicker[t]['ask'],
                 "highestBid": bfxTicker[t]['bid'],
-                "percentChange": "",
-                "baseVolume": str(float(bfxTicker[t]['volume']) * float(bfxTicker[t]['last_price'])),
-                "quoteVolume": bfxTicker[t]['volume'],
                 "update_time": bfxTicker[t]['update_time']
             }
+            ticker[couple_reverse] = {
+                        "last": 1 / bfxTicker[t]['last_price'],
+                        "lowestAsk": 1 / bfxTicker[t]['ask'],
+                        "highestBid": 1 / bfxTicker[t]['bid'],
+                        "update_time": bfxTicker[t]['update_time']
+                }
         return ticker

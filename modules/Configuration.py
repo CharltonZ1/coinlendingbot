@@ -189,6 +189,13 @@ def get_all_currencies():
         raise Exception('ERROR: List of supported currencies must defined in [' + exchange + '] all_currencies.')
 
 
+def get_output_currency():
+    '''
+    Get output currency to present the earnings summary
+    '''
+    return get('BOT', 'outputCurrency', 'BTC')
+
+
 def get_notification_config():
     notify_conf = {'enable_notifications': config.has_section('notifications')}
 
