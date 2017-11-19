@@ -144,7 +144,6 @@ def get_bot_version():
     import subprocess
     try:
         output = subprocess.check_output(["git", "rev-list", "--count", "HEAD"])
-        int(output)
-        return output
+        return int(output)
     except Exception:
         return '3.0.0'

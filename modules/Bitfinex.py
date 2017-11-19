@@ -18,6 +18,7 @@ from modules.websocket import ExchangeWsClient
 class Bitfinex(ExchangeApi):
     def __init__(self, cfg, weblog):
         super(Bitfinex, self).__init__(cfg, weblog)
+        Bitfinex2Poloniex.all_currencies = self.all_currencies
         self.logger = logging.getLogger(__name__)
         self.lock = threading.RLock()
         self.req_per_period = 1
@@ -25,8 +26,6 @@ class Bitfinex(ExchangeApi):
         self.req_period = self.default_req_period
         self.req_time_log = RingBuffer(self.req_per_period)
         self.url = 'https://api.bitfinex.com'
-        self.key = self.cfg.get("API", "apikey", None)
-        self.secret = self.cfg.get("API", "secret", None)
         self.apiVersion = 'v1'
         self.symbols = []
         self.timeout = int(self.cfg.get("BOT", "timeout", 30, 1, 180))
@@ -62,10 +61,10 @@ class Bitfinex(ExchangeApi):
         j = json.dumps(payload)
         data = base64.standard_b64encode(j.encode('utf8'))
 
-        h = hmac.new(self.secret.encode('utf8'), data, hashlib.sha384)
+        h = hmac.new(self.apiSecret.encode('utf8'), data, hashlib.sha384)
         signature = h.hexdigest()
         return {
-            "X-BFX-APIKEY": self.key,
+            "X-BFX-APIKEY": self.apiKey,
             "X-BFX-SIGNATURE": signature,
             "X-BFX-PAYLOAD": data,
             "Connection": "close"
@@ -82,12 +81,13 @@ class Bitfinex(ExchangeApi):
                 r = requests.post(url, headers=payload, verify=verify, timeout=self.timeout)
 
             if r.status_code != 200:
-                if r.status_code == 502 or r.status_code in range(520, 530, 1):
-                    raise ApiError('API Error ' + str(r.status_code) +
+                statusCode = int(r.status_code)
+                if statusCode == 502 or statusCode in range(520, 530, 1):
+                    raise ApiError('(1)API Error ' + str(statusCode) +
                                    ': The web server reported a bad gateway or gateway timeout error.')
-                elif r.status_code == 429:
+                elif statusCode == 429:
                     self.increase_request_timer()
-                raise ApiError('API Error ' + str(r.status_code) + ': ' + r.text)
+                raise ApiError('(2)API Error ' + str(statusCode) + ': ' + r.text)
 
             # Check in case something has gone wrong and the timer is too big
             self.reset_request_timer()
@@ -124,15 +124,15 @@ class Bitfinex(ExchangeApi):
         """
         if len(self.symbols) == 0:
             bfx_resp = self._get('symbols')
-            all_currencies = self.cfg.get_all_currencies()
+            currencies = self.all_currencies
             output_currency = self.cfg.get_output_currency()
-            if output_currency not in all_currencies:
-                all_currencies.append(output_currency)
+            if output_currency not in currencies:
+                currencies.append(output_currency)
             for symbol in bfx_resp:
                 base = symbol[3:].upper()
                 curr = symbol[:3].upper()
-                if ((base == 'BTC' and curr in all_currencies) or
-                   (base in all_currencies and curr == 'BTC')):
+                if ((base == 'BTC' and curr in currencies) or
+                   (base in currencies and curr == 'BTC')):
                     self.symbols.append(symbol)
 
         return self.symbols
@@ -179,7 +179,7 @@ class Bitfinex(ExchangeApi):
         """
         bfx_resp = self._post('balances')
         balances = Bitfinex2Poloniex.convertAccountBalances(bfx_resp, account)
-
+        self.logger.debug("accout:{} result:{}".format(account, balances))
         return balances
 
     def cancel_loan_offer(self, currency, order_number):
@@ -248,7 +248,7 @@ class Bitfinex(ExchangeApi):
         https://bitfinex.readme.io/v1/reference#rest-auth-wallet-balances
         """
         balances = self.return_available_account_balances('exchange')
-        return_dict = {cur: u'0.00000000' for cur in self.cfg.get_all_currencies()}
+        return_dict = {cur: u'0.00000000' for cur in self.all_currencies}
         return_dict.update(balances['exchange'])
         return return_dict
 
@@ -284,8 +284,7 @@ class Bitfinex(ExchangeApi):
         https://bitfinex.readme.io/v1/reference#rest-auth-balance-history
         """
         history = []
-        all_currencies = self.cfg.get_all_currencies()
-        for curr in all_currencies:
+        for curr in self.all_currencies:
             payload = {
                 "currency": curr,
                 "since": str(start),

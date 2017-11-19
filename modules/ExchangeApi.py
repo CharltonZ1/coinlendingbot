@@ -36,6 +36,9 @@ class ExchangeApi(object):
         """
         self.cfg = cfg
         self.weblog = weblog
+        self.apiKey = self.cfg.get("API", "apikey", None)
+        self.apiSecret = self.cfg.get("API", "secret", None)
+        self.all_currencies = self.cfg.get_all_currencies()
 
     @abc.abstractmethod
     def limit_request_rate(self):

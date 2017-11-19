@@ -32,8 +32,6 @@ def post_process(before):
 class Poloniex(ExchangeApi):
     def __init__(self, cfg, weblog):
         super(Poloniex, self).__init__(cfg, weblog)
-        self.APIKey = self.cfg.get("API", "apikey", None)
-        self.Secret = self.cfg.get("API", "secret", None)
         self.req_per_period = 6
         self.default_req_period = 1000  # milliseconds
         self.req_period = self.default_req_period
@@ -93,10 +91,10 @@ class Poloniex(ExchangeApi):
                 req['nonce'] = int(time.time() * 1000)
                 post_data = urllib.urlencode(req)
 
-                sign = hmac.new(self.Secret, post_data, hashlib.sha512).hexdigest()
+                sign = hmac.new(self.apiSecret, post_data, hashlib.sha512).hexdigest()
                 headers = {
                     'Sign': sign,
-                    'Key': self.APIKey
+                    'Key': self.apiKey
                 }
 
                 ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/tradingApi', post_data, headers))

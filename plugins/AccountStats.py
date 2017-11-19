@@ -138,6 +138,8 @@ class AccountStats(Plugin):
         row = cursor.fetchone()
         if row is not None:
             while row is not None:
+                if row[1] not in self.all_currencies:
+                    continue
                 output += self.format_value(row[0]) + ' ' + str(row[1]) + ' Today\n'
                 if row[1] not in self.earnings:
                     self.earnings[row[1]] = {}
@@ -152,6 +154,8 @@ class AccountStats(Plugin):
         row = cursor.fetchone()
         if row is not None:
             while row is not None:
+                if row[1] not in self.all_currencies:
+                    continue
                 output += self.format_value(row[0]) + ' ' + str(row[1]) + ' Yesterday\n'
                 if row[1] not in self.earnings:
                     self.earnings[row[1]] = {}
@@ -166,6 +170,8 @@ class AccountStats(Plugin):
         row = cursor.fetchone()
         if row is not None:
             while row is not None:
+                if row[1] not in self.all_currencies:
+                    continue
                 output += self.format_value(row[0]) + ' ' + str(row[1]) + ' in total\n'
                 if row[1] not in self.earnings:
                     self.earnings[row[1]] = {}

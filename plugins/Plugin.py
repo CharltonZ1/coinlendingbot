@@ -12,6 +12,7 @@ class Plugin(object):
         self.config = cfg1
         self.notify_config = notify_config1
         self.log = log1
+        self.all_currencies = self.config.get_all_currencies()
 
     # override this to run plugin init code
     def on_bot_init(self):

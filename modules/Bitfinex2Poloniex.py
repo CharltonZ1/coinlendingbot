@@ -7,6 +7,8 @@ import pytz
 
 
 class Bitfinex2Poloniex(object):
+    all_currencies = []
+
     @staticmethod
     def convertTimestamp(timestamp):
         '''
@@ -22,6 +24,8 @@ class Bitfinex2Poloniex(object):
         '''
         plxOffers = {}
         for offer in bfxOffers:
+            if offer['currency'] not in Bitfinex2Poloniex.all_currencies:
+                continue
             if offer['currency'] not in plxOffers:
                 plxOffers[offer['currency']] = []
 
@@ -47,6 +51,8 @@ class Bitfinex2Poloniex(object):
         plxOffers['provided'] = []
         plxOffers['used'] = []
         for offer in bfxOffers:
+            if offer['currency'] not in Bitfinex2Poloniex.all_currencies:
+                continue
             plxOffers['provided'].append({
                 "id": offer['id'],
                 "currency": offer['currency'],
@@ -108,11 +114,11 @@ class Bitfinex2Poloniex(object):
             balances[account] = {}
 
         for balance in bfxBalances:
-            if balance['type'] == 'conversion':
+            currency = balance['currency'].upper()
+            if (balance['type'] == 'conversion') or (currency not in Bitfinex2Poloniex.all_currencies):
                 continue
             if (account == '' or account == accountMap[balance['type']]) and float(balance['amount']) > 0:
-                curr = balance['currency'].upper()
-                balances[account][curr] = balance['available']
+                balances[account][currency] = balance['available']
 
         return balances
 
@@ -126,15 +132,15 @@ class Bitfinex2Poloniex(object):
             couple = "{}_{}".format(t[3:], t[:3])
             couple_reverse = "{}_{}".format(t[:3], t[3:])
             ticker[couple] = {
-                "last": bfxTicker[t]['last_price'],
-                "lowestAsk": bfxTicker[t]['ask'],
-                "highestBid": bfxTicker[t]['bid'],
+                "last": float(bfxTicker[t]['last_price']),
+                "lowestAsk": float(bfxTicker[t]['ask']),
+                "highestBid": float(bfxTicker[t]['bid']),
                 "update_time": bfxTicker[t]['update_time']
             }
             ticker[couple_reverse] = {
-                        "last": 1 / bfxTicker[t]['last_price'],
-                        "lowestAsk": 1 / bfxTicker[t]['ask'],
-                        "highestBid": 1 / bfxTicker[t]['bid'],
+                        "last": 1 / float(bfxTicker[t]['last_price']),
+                        "lowestAsk": 1 / float(bfxTicker[t]['ask']),
+                        "highestBid": 1 / float(bfxTicker[t]['bid']),
                         "update_time": bfxTicker[t]['update_time']
                 }
         return ticker
