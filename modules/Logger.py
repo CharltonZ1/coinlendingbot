@@ -1,9 +1,7 @@
 # coding=utf-8
-import atexit
 import datetime
 import io
 import json
-import sys
 import time
 
 import modules.Configuration as Config
