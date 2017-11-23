@@ -83,11 +83,11 @@ class Bitfinex(ExchangeApi):
             if r.status_code != 200:
                 statusCode = int(r.status_code)
                 if statusCode == 502 or statusCode in range(520, 530, 1):
-                    raise ApiError('(1)API Error ' + str(statusCode) +
+                    raise ApiError('(1) API Error ' + str(statusCode) +
                                    ': The web server reported a bad gateway or gateway timeout error.')
                 elif statusCode == 429:
                     self.increase_request_timer()
-                raise ApiError('(2)API Error ' + str(statusCode) + ': ' + r.text)
+                raise ApiError('(2) API Error ' + str(statusCode) + ': ' + r.text)
 
             # Check in case something has gone wrong and the timer is too big
             self.reset_request_timer()
@@ -283,6 +283,7 @@ class Bitfinex(ExchangeApi):
         it as history.
         https://bitfinex.readme.io/v1/reference#rest-auth-balance-history
         """
+        self.logger.debug("Start:{} Stop:{} Limit:{}".format(start, stop, limit))
         history = []
         for curr in self.all_currencies:
             payload = {

@@ -6,39 +6,9 @@ import json
 import sys
 import time
 
-import ConsoleUtils
 import modules.Configuration as Config
 from RingBuffer import RingBuffer
 from Notify import send_notification
-
-
-class ConsoleOutput(object):
-    def __init__(self):
-        self._status = ''
-        atexit.register(self._exit)
-
-    def _exit(self):
-        self._status += '  '  # In case the shell added a ^C
-        self.status('')
-
-    def status(self, msg, time='', days_remaining_msg=''):
-        status = str(msg)
-        cols = ConsoleUtils.get_terminal_size()[0]
-        if msg != '' and len(status) > cols:
-            # truncate status, try preventing console bloating
-            status = str(msg)[:cols - 4] + '...'
-        update = '\r'
-        update += status
-        update += ' ' * (len(self._status) - len(status))
-        update += '\b' * (len(self._status) - len(status))
-        sys.stderr.write(update)
-        self._status = status
-
-    def printline(self, line):
-        update = '\r'
-        update += line + ' ' * (len(self._status) - len(line)) + '\n'
-        update += self._status
-        sys.stderr.write(update)
 
 
 class JsonOutput(object):
@@ -87,15 +57,12 @@ class JsonOutput(object):
 
 
 class Logger(object):
-    def __init__(self, json_file='', json_log_size=-1, exchange=''):
+    def __init__(self, json_file, json_log_size, exchange):
         self._lent = ''
         self._daysRemaining = ''
         self.compactLog = False
-        if json_file != '' and json_log_size != -1:
-            self.output = JsonOutput(json_file, json_log_size, exchange)
-            self.compactLog = bool(Config.get('BOT', 'jsonlogcompact', False))
-        else:
-            self.output = ConsoleOutput()
+        self.output = JsonOutput(json_file, json_log_size, exchange)
+        self.compactLog = bool(Config.get('BOT', 'jsonlogcompact', False))
         self.refreshStatus()
 
     @staticmethod
@@ -111,8 +78,6 @@ class Logger(object):
     def log_error(self, msg):
         log_message = "{0} Error {1}".format(self.timestamp(), msg)
         self.output.printline(log_message)
-        if isinstance(self.output, JsonOutput):
-            print log_message
         self.refreshStatus()
 
     def offer(self, amt, cur, rate, days, msg):

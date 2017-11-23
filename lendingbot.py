@@ -140,6 +140,7 @@ try:
                 sum_sleep = additional_sleep + Lending.get_sleep_time()
                 msg = 'IP has been banned due to many requests. Sleeping for {} seconds'.format(sum_sleep)
                 weblog.log_error(msg)
+                logger.error(msg)
                 logger.warn(msg)
                 if Config.has_option('MarketAnalysis', 'analyseCurrencies'):
                     if api.req_period <= api.default_req_period * 1.5:
