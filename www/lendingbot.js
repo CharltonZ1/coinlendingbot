@@ -128,7 +128,7 @@ function updateRawValues (rawData) {
       highestBidBTC = 1
     }
 
-    if ((!isNaN(averageLendingRate) && !isNaN(lentSum)) || !isNaN(totalCoins)) {
+    if (!isNaN(lentSum) || !isNaN(totalCoins)) {
       // cover cases where totalCoins isn't updated because all coins are lent
       if (isNaN(totalCoins) && !isNaN(lentSum)) {
         totalCoins = lentSum
@@ -183,12 +183,16 @@ function updateRawValues (rawData) {
       if (!isNaN(highestBidBTC) && earningsOutputCoin !== currency) {
         currencyStr += '<br/>1 ' + displayCurrency + ' = ' + prettyFloat(earningsOutputCoinRate * highestBidBTC / btcMultiplier, 2) + ' ' + earningsOutputCoin
       }
-      var rowValues = [currencyStr, lentStr,
-        "<div class='inlinediv' >" + printFloat(averageLendingRate, 5) + '% Day' + avgRateText + '<br/>' +
+      var rowValues
+      if (lentSum > 0) {
+        rowValues = [currencyStr, lentStr,
+          "<div class='inlinediv' >" + printFloat(averageLendingRate, 5) + '% Day' + avgRateText + '<br/>' +
                     printFloat(effectiveRate, 5) + '% Day' + effRateText + '<br/></div>' +
                     "<div class='inlinediv' >" + printFloat(yearlyRate, 2) + '% Year<br/>' +
                     printFloat(yearlyRateComp, 2) + '% Year' + compoundRateText + '</div>' ]
-
+      } else {
+        rowValues = [currencyStr, lentStr, '']
+      }
       // print coin status
       var row = table.insertRow()
       for (var i = 0; i < rowValues.length; ++i) {
