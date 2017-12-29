@@ -7,19 +7,11 @@ from datetime import datetime
 import pandas as pd
 import sqlite3 as sqlite
 from sqlite3 import Error
-from modules.ExchangeApi import ApiError
+import numpy
 
-# Bot libs
-import modules.Configuration as Config
-from modules.Data import truncate
-try:
-    import numpy
-    use_numpy = True
-except ImportError as ex:
-    ex.message = ex.message if ex.message else str(ex)
-    print("WARN: Module Numpy not found, using manual percentile method instead. "
-          "It is recommended to install Numpy. Error: {0}".format(ex.message))
-    use_numpy = False
+from coinlendingbot.ExchangeApi import ApiError
+import coinlendingbot.Configuration as Config
+from coinlendingbot.Data import truncate
 
 # Improvements
 # [ ] Provide something that takes into account dust offers. (The golden cross works well on BTC, not slower markets)
@@ -332,14 +324,11 @@ class MarketAnalysis(object):
         d1 = key(N[int(c)]) * (k - f)
         return d0 + d1
 
-    def get_percentile(self, rates, lending_style, use_numpy=use_numpy):
+    def get_percentile(self, rates, lending_style):
         """
         Take a list of rates no matter what method is being used, simple list, no pandas / numpy array
         """
-        if use_numpy:
-            result = numpy.percentile(rates, int(lending_style))
-        else:
-            result = self.percentile(sorted(rates), lending_style / 100.0)
+        result = numpy.percentile(rates, int(lending_style))
         result = truncate(result, 6)
         return result
 

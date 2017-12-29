@@ -5,8 +5,8 @@ from datetime import datetime
 from twisted.internet import reactor
 from twisted.internet import ssl
 
-from modules.websocket.WsConfig import WsConfig
-from modules.websocket import ExchangeWsClientFactory
+from coinlendingbot.websocket.WsConfig import WsConfig
+from coinlendingbot.websocket import ExchangeWsClientFactory
 
 
 class ExchangeWsClient(threading.Thread):

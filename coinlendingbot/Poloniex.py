@@ -5,14 +5,16 @@ import json
 import socket
 import time
 from datetime import datetime
-import urllib
-import urllib2
+from urllib.parse import urlencode
+from urllib.request import urlopen, Request
+from urllib.error import HTTPError
 import threading
-import modules.Configuration as Config
+from builtins import range
 
-from modules.RingBuffer import RingBuffer
-from modules.ExchangeApi import ExchangeApi
-from modules.ExchangeApi import ApiError
+import coinlendingbot.Configuration as Config
+from coinlendingbot.RingBuffer import RingBuffer
+from coinlendingbot.ExchangeApi import ExchangeApi
+from coinlendingbot.ExchangeApi import ApiError
 
 
 def post_process(before):
@@ -21,7 +23,7 @@ def post_process(before):
     # Add timestamps if there isnt one but is a datetime
     if 'return' in after:
         if isinstance(after['return'], list):
-            for x in xrange(0, len(after['return'])):
+            for x in range(0, len(after['return'])):
                 if isinstance(after['return'][x], dict):
                     if 'datetime' in after['return'][x] and 'timestamp' not in after['return'][x]:
                         after['return'][x]['timestamp'] = float(ExchangeApi.create_time_stamp(after['return'][x]['datetime']))  # nopep8
@@ -68,14 +70,14 @@ class Poloniex(ExchangeApi):
 
         try:
             if command == "returnTicker" or command == "return24hVolume":
-                ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/public?command=' + command))
+                ret = urlopen(Request('https://poloniex.com/public?command=' + command))
                 return _read_response(ret)
             elif command == "returnOrderBook":
-                ret = urllib2.urlopen(urllib2.Request(
+                ret = urlopen(Request(
                     'https://poloniex.com/public?command=' + command + '&currencyPair=' + str(req['currencyPair'])))
                 return _read_response(ret)
             elif command == "returnMarketTradeHistory":
-                ret = urllib2.urlopen(urllib2.Request(
+                ret = urlopen(Request(
                     'https://poloniex.com/public?command=' + "returnTradeHistory" + '&currencyPair=' + str(
                         req['currencyPair'])))
                 return _read_response(ret)
@@ -84,7 +86,7 @@ class Poloniex(ExchangeApi):
                            + '&currency=' + str(req['currency']))
                 if req['limit'] > 0:
                     req_url += ('&limit=' + str(req['limit']))
-                ret = urllib2.urlopen(urllib2.Request(req_url))
+                ret = urlopen(Request(req_url))
                 return _read_response(ret)
             else:
                 req['command'] = command
@@ -97,14 +99,14 @@ class Poloniex(ExchangeApi):
                     'Key': self.apiKey
                 }
 
-                ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/tradingApi', post_data, headers))
+                ret = urlopen(Request('https://poloniex.com/tradingApi', post_data, headers))
                 json_ret = _read_response(ret)
                 return post_process(json_ret)
 
             # Check in case something has gone wrong and the timer is too big
             self.reset_request_timer()
 
-        except urllib2.HTTPError as ex:
+        except HTTPError as ex:
             raw_polo_response = ex.read()
             try:
                 data = json.loads(raw_polo_response)

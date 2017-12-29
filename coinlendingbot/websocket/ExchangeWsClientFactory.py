@@ -2,7 +2,7 @@ import logging
 from autobahn.twisted.websocket import WebSocketClientFactory
 from twisted.internet.protocol import ReconnectingClientFactory
 
-from modules.websocket.WsConfig import WsConfig
+from coinlendingbot.websocket.WsConfig import WsConfig
 
 
 class ExchangeWsClientFactory(ReconnectingClientFactory, WebSocketClientFactory):

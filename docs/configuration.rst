@@ -7,7 +7,12 @@ Configuring the bot can be as simple as select the exchange to use and copy-past
 
 New features are required to be backwards compatible with previous versions of the .cfg but it is still recommended that you update your config immediately after updating to take advantage of new features.
 
-To begin, copy ``default.cfg.example`` to ``default.cfg``. Now you can edit your settings.
+To start:
+
+- Copy ``default.cfg.example`` to ``default.cfg``
+- Copy ``logging.ini.example`` to ``logging.ini``
+
+Now you can edit your settings.
 
 Exchange selection, API key and Secret
 --------------------------------------

@@ -1,5 +1,5 @@
 # coding=utf-8
-from plugins.Plugin import Plugin
+from coinlendingbot.plugins.Plugin import Plugin
 import os
 import json
 import sqlite3

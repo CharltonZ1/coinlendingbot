@@ -2,8 +2,8 @@
 Factory to instanciate right API class
 '''
 
-from modules.Poloniex import Poloniex
-from modules.Bitfinex import Bitfinex
+from coinlendingbot.Poloniex import Poloniex
+from coinlendingbot.Bitfinex import Bitfinex
 
 EXCHANGE = {'POLONIEX': Poloniex, 'BITFINEX': Bitfinex}
 

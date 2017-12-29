@@ -4,9 +4,9 @@ import io
 import json
 import time
 
-import modules.Configuration as Config
-from RingBuffer import RingBuffer
-from Notify import send_notification
+import coinlendingbot.Configuration as Config
+from coinlendingbot.RingBuffer import RingBuffer
+from coinlendingbot.Notify import send_notification
 
 
 class JsonOutput(object):

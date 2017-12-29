@@ -8,11 +8,11 @@ import time
 import threading
 import logging
 
-from modules.ExchangeApi import ExchangeApi
-from modules.ExchangeApi import ApiError
-from modules.Bitfinex2Poloniex import Bitfinex2Poloniex
-from modules.RingBuffer import RingBuffer
-from modules.websocket import ExchangeWsClient
+from coinlendingbot.ExchangeApi import ExchangeApi
+from coinlendingbot.ExchangeApi import ApiError
+from coinlendingbot.Bitfinex2Poloniex import Bitfinex2Poloniex
+from coinlendingbot.RingBuffer import RingBuffer
+from coinlendingbot.websocket import ExchangeWsClient
 
 
 class Bitfinex(ExchangeApi):

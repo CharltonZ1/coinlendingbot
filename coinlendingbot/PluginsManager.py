@@ -1,4 +1,4 @@
-from plugins import *
+from coinlendingbot.plugins import *
 
 config = None
 api = None
