@@ -1,3 +1,5 @@
+#!/bin/env python3
+
 import click
 import logging
 import logging.config
@@ -78,7 +80,7 @@ def main(config, logconfig, dryrun):
         analysis.run()
     else:
         analysis = None
-    Lending.init(Config, api, weblog, Data, MaxToLend, dry_run, analysis, notify_conf)
+    Lending.init(Config, api, weblog, Data, MaxToLend, dryrun, analysis, notify_conf)
 
     # load plugins
     PluginsManager.init(Config, api, weblog, notify_conf)
@@ -101,6 +103,9 @@ def main(config, logconfig, dryrun):
                 # allow existing the main bot loop
                 raise
             except Exception as ex:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                logger.debug(ex)
+                logger.debug(repr(traceback.format_tb(exc_traceback)))
                 weblog.log_error(ex.message)
                 weblog.persistStatus()
                 if 'Invalid API key' in ex.message:

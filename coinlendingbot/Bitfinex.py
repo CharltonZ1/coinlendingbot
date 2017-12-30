@@ -83,19 +83,18 @@ class Bitfinex(ExchangeApi):
             if r.status_code != 200:
                 statusCode = int(r.status_code)
                 if statusCode == 502 or statusCode in range(520, 530, 1):
-                    raise ApiError('(1) API Error ' + str(statusCode) +
-                                   ': The web server reported a bad gateway or gateway timeout error.')
+                    raise ApiError('(1) API Error {}: The web server reported a bad gateway or gateway timeout error.'
+                                   .format(statusCode))
                 elif statusCode == 429:
                     self.increase_request_timer()
-                raise ApiError('(2) API Error ' + str(statusCode) + ': ' + r.text)
+                raise ApiError('(2) API Error {}: {}'.format(statusCode, r.text))
 
             # Check in case something has gone wrong and the timer is too big
             self.reset_request_timer()
             return r.json()
 
         except Exception as ex:
-            ex.message = ex.message if ex.message else str(ex)
-            ex.message = "{0} Requesting {1}".format(ex.message, self.url + request)
+            ex.message = "{0} requesting {1}".format(ex, self.url + request)
             raise ex
 
     @ExchangeApi.synchronized

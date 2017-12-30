@@ -1,5 +1,5 @@
 FROM python:3.6-slim
-LABEL "project.home"="https://github.com/mahiso/coinlendingbot"
+LABEL "project.home"="https://github.com/m3h7/coinlendingbot"
 
 #
 # Build: docker build -t <your_id>/coinlendingbot .
@@ -10,7 +10,7 @@ WORKDIR /usr/src/app
 
 COPY requirements.txt .
 RUN apt-get update && apt-get -y upgrade && \
-    apt-get -y install build-essential openssl && \
+    apt-get -y install --no-install-recommends build-essential openssl && \
     pip install --no-cache-dir -r ./requirements.txt && \
     apt-get -y autoremove build-essential && \
     rm -rf /var/lib/apt/lists/*
