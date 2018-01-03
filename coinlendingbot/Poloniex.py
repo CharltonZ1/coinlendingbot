@@ -1,14 +1,14 @@
 # coding=utf-8
+import logging
 import hashlib
 import hmac
 import json
 import socket
 import time
 from datetime import datetime
-from urllib.parse import urlencode
-from urllib.request import urlopen, Request
-from urllib.error import HTTPError
+import requests
 import threading
+import urllib
 from builtins import range
 
 import coinlendingbot.Configuration as Config
@@ -34,13 +34,15 @@ def post_process(before):
 class Poloniex(ExchangeApi):
     def __init__(self, cfg, weblog):
         super(Poloniex, self).__init__(cfg, weblog)
+        self.logger = logging.getLogger(__name__)
         self.req_per_period = 6
         self.default_req_period = 1000  # milliseconds
         self.req_period = self.default_req_period
         self.req_time_log = RingBuffer(self.req_per_period)
         self.lock = threading.RLock()
         socket.setdefaulttimeout(int(Config.get("BOT", "timeout", 30, 1, 180)))
-        self.api_debug_log = self.cfg.getboolean("BOT", "api_debug_log")
+        self.url_public = 'https://poloniex.com/public'
+        self.url_private = 'https://poloniex.com/tradingApi'
 
     def limit_request_rate(self):
         super(Poloniex, self).limit_request_rate()
@@ -59,54 +61,56 @@ class Poloniex(ExchangeApi):
         # keep the 6 request per sec limit
         self.limit_request_rate()
 
-        if req is None:
-            req = {}
-
         def _read_response(resp):
-            resp_data = json.loads(resp.read())
+            resp_data = resp.json()
             if 'error' in resp_data:
                 raise ApiError(resp_data['error'])
             return resp_data
 
+        if req is None:
+            req = {}
+
         try:
             if command == "returnTicker" or command == "return24hVolume":
-                ret = urlopen(Request('https://poloniex.com/public?command=' + command))
+                ret = requests.get(self.url_public, params={"command": command})
                 return _read_response(ret)
             elif command == "returnOrderBook":
-                ret = urlopen(Request(
-                    'https://poloniex.com/public?command=' + command + '&currencyPair=' + str(req['currencyPair'])))
+                ret = requests.get(self.url_public,
+                                   params={"command": command, "currencyPair": str(req['currencyPair'])})
                 return _read_response(ret)
             elif command == "returnMarketTradeHistory":
-                ret = urlopen(Request(
-                    'https://poloniex.com/public?command=' + "returnTradeHistory" + '&currencyPair=' + str(
-                        req['currencyPair'])))
+                ret = requests.get(self.url_public,
+                                   params={"command": "returnTradeHistory", "currencyPair":  str(req['currencyPair'])})
                 return _read_response(ret)
             elif command == "returnLoanOrders":
-                req_url = ('https://poloniex.com/public?command=' + "returnLoanOrders"
-                           + '&currency=' + str(req['currency']))
+                params = {
+                    "command": command,
+                    "currency": str(req['currency'])
+                }
                 if req['limit'] > 0:
-                    req_url += ('&limit=' + str(req['limit']))
-                ret = urlopen(Request(req_url))
+                    params["limit"] = req["limit"]
+                ret = requests.get(self.url_public, params)
                 return _read_response(ret)
             else:
                 req['command'] = command
                 req['nonce'] = int(time.time() * 1000)
-                post_data = urllib.urlencode(req)
-
-                sign = hmac.new(self.apiSecret, post_data, hashlib.sha512).hexdigest()
+                post_data = urllib.parse.urlencode(req).encode('latin-1')
+                self.logger.debug(post_data)
+                sign = hmac.new(self.apiSecret.encode('latin-1'), post_data, hashlib.sha512).hexdigest()
+                self.logger.debug(sign)
                 headers = {
                     'Sign': sign,
-                    'Key': self.apiKey
+                    'Key': self.apiKey.encode('latin-1')
                 }
-
-                ret = urlopen(Request('https://poloniex.com/tradingApi', post_data, headers))
+                self.logger.debug(headers)
+                ret = requests.post(self.url_private, params=req, headers=headers)
                 json_ret = _read_response(ret)
                 return post_process(json_ret)
 
             # Check in case something has gone wrong and the timer is too big
             self.reset_request_timer()
 
-        except HTTPError as ex:
+        except urllib.error.HTTPError as ex:
             raw_polo_response = ex.read()
             try:
                 data = json.loads(raw_polo_response)
@@ -120,12 +124,10 @@ class Poloniex(ExchangeApi):
                     self.increase_request_timer()
                 else:
                     polo_error_msg = raw_polo_response
-            ex.message = ex.message if ex.message else str(ex)
-            ex.message = "{0} Requesting {1}.  Poloniex reports: '{2}'".format(ex.message, command, polo_error_msg)
+            ex.message = "{0} Requesting {1}.  Poloniex reports: '{2}'".format(ex, command, polo_error_msg)
             raise ex
         except Exception as ex:
-            ex.message = ex.message if ex.message else str(ex)
-            ex.message = "{0} Requesting {1}".format(ex.message, command)
+            ex.message = "{0} Requesting {1}".format(ex, command)
             raise
 
     def return_ticker(self):
@@ -152,6 +154,7 @@ class Poloniex(ExchangeApi):
 
     def return_available_account_balances(self, account):
         balances = self.api_query('returnAvailableAccountBalances', {"account": account})
+        self.logger.debug("Balances: {}".format(balances))
         if isinstance(balances, list):  # silly api wrapper, empty dict returns a list, which breaks the code later.
             balances = {}
         return balances
