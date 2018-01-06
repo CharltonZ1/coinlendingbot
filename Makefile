@@ -8,13 +8,14 @@ all: usage
 usage:
 	@echo "CoinLendingBot Build and Push"
 	@echo "Usage:"
+	@echo "  make pull				- Pull base image from Docker hub"
 	@echo "  make build				- Build the Docker image"
 	@echo "  make REGISTRY=\"myregistry:5000\" push	- Push image to registry"
 	@echo ""
 	@echo "Change registry and image name in Makefile before build and push."
 
 pull:
-	docker pull centos:7
+	docker pull python:3.6-slim
 
 build:
 	docker build --tag $(IMAGENAME) $(SOURCE)
