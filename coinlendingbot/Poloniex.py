@@ -3,13 +3,12 @@ import logging
 import hashlib
 import hmac
 import json
-import socket
 import time
 from datetime import datetime
 import requests
 import threading
 import urllib
-from builtins import range
+# from builtins import range
 
 import coinlendingbot.Configuration as Config
 from coinlendingbot.RingBuffer import RingBuffer
@@ -40,7 +39,7 @@ class Poloniex(ExchangeApi):
         self.req_period = self.default_req_period
         self.req_time_log = RingBuffer(self.req_per_period)
         self.lock = threading.RLock()
-        socket.setdefaulttimeout(int(Config.get("BOT", "timeout", 30, 1, 180)))
+        self.timeout = int(Config.get("BOT", "timeout", 30, 1, 180))
         self.url_public = 'https://poloniex.com/public'
         self.url_private = 'https://poloniex.com/tradingApi'
 
@@ -71,6 +70,9 @@ class Poloniex(ExchangeApi):
             req = {}
 
         try:
+            payload = {
+                "timeout": self.timeout
+            }
             if command == "returnTicker" or command == "return24hVolume":
                 ret = requests.get(self.url_public, params={"command": command})
                 return _read_response(ret)
@@ -92,18 +94,22 @@ class Poloniex(ExchangeApi):
                 ret = requests.get(self.url_public, params)
                 return _read_response(ret)
             else:
-                req['command'] = command
-                req['nonce'] = int(time.time() * 1000)
-                post_data = urllib.parse.urlencode(req).encode('latin-1')
-                self.logger.debug(post_data)
-                sign = hmac.new(self.apiSecret.encode('latin-1'), post_data, hashlib.sha512).hexdigest()
-                self.logger.debug(sign)
-                headers = {
-                    'Sign': sign,
-                    'Key': self.apiKey.encode('latin-1')
+                payload["url"] = self.url_private
+                payload["data"] = {
+                    "command": command,
+                    "nonce": int(time.time() * 1000)
                 }
-                self.logger.debug(headers)
-                ret = requests.post(self.url_private, params=req, headers=headers)
+
+                sign = hmac.new(self.apiSecret.encode('utf-8'),
+                                urllib.parse.urlencode(payload["data"]).encode('utf-8'),
+                                hashlib.sha512).hexdigest()
+
+                payload["headers"] = {
+                    'Sign': sign,
+                    'Key': self.apiKey.encode('utf8')
+                }
+
+                ret = requests.post(**payload)
                 json_ret = _read_response(ret)
                 return post_process(json_ret)
 
@@ -154,7 +160,6 @@ class Poloniex(ExchangeApi):
 
     def return_available_account_balances(self, account):
         balances = self.api_query('returnAvailableAccountBalances', {"account": account})
-        self.logger.debug("Balances: {}".format(balances))
         if isinstance(balances, list):  # silly api wrapper, empty dict returns a list, which breaks the code later.
             balances = {}
         return balances

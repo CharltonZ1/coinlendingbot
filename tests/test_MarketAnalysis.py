@@ -12,18 +12,20 @@ import pandas as pd
 
 # Hack to get relative imports - probably need to fix the dir structure instead but we need this at the minute for
 # pytest to work
-import os, sys, inspect
+import os
+import sys
+import inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
-from modules.MarketAnalysis import MarketAnalysis
-from modules.Configuration import get_all_currencies
-from modules.Poloniex import Poloniex
-import modules.Configuration as Config
-import modules.Data as Data
+from coinlendingbot.MarketAnalysis import MarketAnalysis  # nopep8
+from coinlendingbot.Configuration import get_all_currencies  # nopep8
+from coinlendingbot.Poloniex import Poloniex  # nopep8
+import coinlendingbot.Configuration as Config  # nopep8
+import coinlendingbot.Data as Data  # nopep8
 
-Config.init('default.cfg', Data)
+Config.init(open('poloniex_test.cfg'), Data)
 api = Poloniex(Config, None)
 Data.init(api, None)
 MA = MarketAnalysis(Config, api)
@@ -36,7 +38,8 @@ def new_db():
 
 
 def random_rates():
-    return lists(floats(min_value=0.00001, max_value=100, allow_nan=False, allow_infinity=False), min_size=0, max_size=100).example()
+    return lists(floats(min_value=0.00001, max_value=100, allow_nan=False, allow_infinity=False), min_size=0,
+                 max_size=100).example()
 
 
 def random_dates(min_len, max_len):

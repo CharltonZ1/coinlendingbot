@@ -13,3 +13,4 @@ nohup.out
 docs/_build/
 .cache
 __pycache__
+.hypothesis

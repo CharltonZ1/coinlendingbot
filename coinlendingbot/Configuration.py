@@ -13,11 +13,11 @@ config = configparser.ConfigParser()
 Data = None
 
 
-def init(file_location, data=None):
-    logger.debug('read config file: {}'.format(file_location))
+def init(config_file, data=None):
+    logger.debug('read config file: {}'.format(config_file.name))
     global Data
     Data = data
-    config.read_file(file_location)
+    config.read_file(config_file)
     return config
 
 

@@ -17,3 +17,4 @@ market_data
 .dockerignore
 __pycache__
 venv
+.hyphothesis
