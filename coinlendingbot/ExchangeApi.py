@@ -2,14 +2,12 @@
 Exchange API Base class
 """
 
-import abc
+from abc import ABC, abstractmethod
 import calendar
 import time
 
 
-class ExchangeApi(object):
-    __metaclass__ = abc.ABCMeta
-
+class ExchangeApi(ABC):
     def __str__(self):
         return self.__class__.__name__.upper()
 
@@ -40,7 +38,7 @@ class ExchangeApi(object):
         self.apiSecret = self.cfg.get("API", "secret", None)
         self.all_currencies = self.cfg.get_all_currencies()
 
-    @abc.abstractmethod
+    @abstractmethod
     def limit_request_rate(self):
         now = time.time() * 1000  # milliseconds
         # Start throttling only when the queue is full
@@ -54,28 +52,28 @@ class ExchangeApi(object):
 
         self.req_time_log.append(now)
 
-    @abc.abstractmethod
+    @abstractmethod
     def increase_request_timer(self):
         if self.req_period <= self.default_req_period * 1.5:
             self.req_period += 3
 
-    @abc.abstractmethod
+    @abstractmethod
     def decrease_request_timer(self):
         if self.req_period > self.default_req_period:
             self.req_period -= 1
 
-    @abc.abstractmethod
+    @abstractmethod
     def reset_request_timer(self):
         if self.req_period >= self.default_req_period * 1.5:
             self.req_period = self.default_req_period
 
-    @abc.abstractmethod
+    @abstractmethod
     def return_ticker(self):
         """
         Returns the ticker for all markets.
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def return_balances(self):
         """
         Returns available exchange balances.
@@ -83,7 +81,7 @@ class ExchangeApi(object):
         {"BTC":"0.59098578","LTC":"3.31117268", ... }
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def return_available_account_balances(self, account):
         """
         Returns balances sorted by account. You may optionally specify the
@@ -98,7 +96,7 @@ class ExchangeApi(object):
         "lending":{"DASH":"0.01174765","LTC":"11.99936230"}}
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def return_lending_history(self, start, stop, limit=500):
         """
         Returns lending history within a time range specified by the "start" and
@@ -111,7 +109,7 @@ class ExchangeApi(object):
          "close": "2016-09-28 18:13:03" }]
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def return_loan_orders(self, currency, limit=0):
         """
         Returns the list of loan offers and demands for a given currency,
@@ -121,13 +119,13 @@ class ExchangeApi(object):
          "demands":[{"rate":"0.00170000","amount":"26.54848841","rangeMin":2,"rangeMax":2}, ... ]}
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def return_open_loan_offers(self):
         """
         Returns own open loan offers for each currency
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def return_active_loans(self):
         """
         Returns your active loans for each currency. Sample output:
@@ -140,19 +138,19 @@ class ExchangeApi(object):
         "date":"2015-05-10 23:51:12","fees":"-0.00000001"}]}
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def cancel_loan_offer(self, currency, order_number):
         """
         Cancels a loan offer specified by the "orderNumber"
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def create_loan_offer(self, currency, amount, duration, auto_renew, lending_rate):
         """
         Creates a loan offer for a given currency.
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def transfer_balance(self, currency, amount, from_account, to_account):
         """
         Transfers values from one account/wallet to another

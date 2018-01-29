@@ -7,19 +7,11 @@ from datetime import datetime
 import pandas as pd
 import sqlite3 as sqlite
 from sqlite3 import Error
-from modules.ExchangeApi import ApiError
+import numpy
 
-# Bot libs
-import modules.Configuration as Config
-from modules.Data import truncate
-try:
-    import numpy
-    use_numpy = True
-except ImportError as ex:
-    ex.message = ex.message if ex.message else str(ex)
-    print("WARN: Module Numpy not found, using manual percentile method instead. "
-          "It is recommended to install Numpy. Error: {0}".format(ex.message))
-    use_numpy = False
+from coinlendingbot.ExchangeApi import ApiError
+import coinlendingbot.Configuration as Config
+from coinlendingbot.Data import truncate
 
 # Improvements
 # [ ] Provide something that takes into account dust offers. (The golden cross works well on BTC, not slower markets)
@@ -148,7 +140,7 @@ class MarketAnalysis(object):
                 if (raw_data["update_time"] - update_time).total_seconds() > 0:
                     update_time = raw_data["update_time"]
                     market_data = []
-                    for i in xrange(levels):
+                    for i in range(levels):
                         try:
                             market_data.append(str(raw_data['offers'][i]['rate']))
                             market_data.append(str(raw_data['offers'][i]['amount']))
@@ -173,7 +165,7 @@ class MarketAnalysis(object):
             if levels is None:
                 levels = self.recorded_levels
             insert_sql = "INSERT INTO loans ("
-            for level in xrange(levels):
+            for level in range(levels):
                 insert_sql += "rate{0}, amnt{0}, ".format(level)
             insert_sql += "percentile) VALUES ({0});".format(','.join(market_data))  # percentile = 0
             with db_con:
@@ -332,14 +324,11 @@ class MarketAnalysis(object):
         d1 = key(N[int(c)]) * (k - f)
         return d0 + d1
 
-    def get_percentile(self, rates, lending_style, use_numpy=use_numpy):
+    def get_percentile(self, rates, lending_style):
         """
         Take a list of rates no matter what method is being used, simple list, no pandas / numpy array
         """
-        if use_numpy:
-            result = numpy.percentile(rates, int(lending_style))
-        else:
-            result = self.percentile(sorted(rates), lending_style / 100.0)
+        result = numpy.percentile(rates, int(lending_style))
         result = truncate(result, 6)
         return result
 
@@ -406,7 +395,7 @@ class MarketAnalysis(object):
             cursor = db_con.cursor()
             create_table_sql = "CREATE TABLE IF NOT EXISTS loans (id INTEGER PRIMARY KEY AUTOINCREMENT," + \
                                "unixtime integer(4) not null default (strftime('%s','now')),"
-            for level in xrange(levels):
+            for level in range(levels):
                 create_table_sql += "rate{0} FLOAT, ".format(level)
                 create_table_sql += "amnt{0} FLOAT, ".format(level)
             create_table_sql += "percentile FLOAT);"

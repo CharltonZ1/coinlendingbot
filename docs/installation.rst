@@ -83,7 +83,7 @@ You have to configure the bot, especially choosing the exchange  and api key/sec
 To configure the bot with your settings:
 
     #. Copy ``default.cfg.example`` to ``default.cfg`` (Running lendingbot.py also does this for you if default.cfg doesn't already exist.)
-    #. Open ``default.cfg`` and enter your desired settings `(information on settings here) <http://poloniexlendingbot.readthedocs.io/en/latest/configuration.html>`_.
+    #. Open ``default.cfg`` and enter your desired settings.
     #. Save ``default.cfg``
 
 You are now ready to run the bot.
@@ -96,12 +96,12 @@ To run, either:
     - Double-click lendingbot.py (if you have .py associated with the Python executable)
     - Run ``python lendingbot.py`` in command prompt or terminal.
 
-.. note:: You can use arguments to specify a specific config file ``-cfg`` or to do dry runs ``-dry``. To see these args do: ``python lendingbot.py -h``
+.. note:: You can use arguments to specify a specific config file ``--config`` or to do dry runs ``--dry``. To see these args do: ``python lendingbot.py --help``
 
 Installing on Pythonanywhere.com
 ================================
 
-`Pythonanywhere.com <https://www.pythonanywhere.com>`_ is a useful website that will host and run Python code for you. 
+`Pythonanywhere.com <https://www.pythonanywhere.com>`_ is a useful website that will host and run Python code for you.
 
 WARNING: While you should be able to setup the bot on pythonanywhere, there are limitations on running the bot.
 
@@ -172,14 +172,14 @@ By default this file will start 3 containers:
   - An nginx reverse proxy
     This allows you to have the nginx web server as the main access point for the other bot's web pages.
     It uses `jwilder/nginx-proxy <https://github.com/jwilder/nginx-proxy>`_
-  - A python container running the bot on poloniex. 
-    This starts a bot running that connects to poloniex and exposes a web interface. 
+  - A python container running the bot on poloniex.
+    This starts a bot running that connects to poloniex and exposes a web interface.
     It uses `python:2.7-slim <https://hub.docker.com/r/library/python/tags/>`_
-  - A python container running the bot on bitfinex. 
-    This starts a bot running that connects to bitfinex and exposes a web interface. 
+  - A python container running the bot on bitfinex.
+    This starts a bot running that connects to bitfinex and exposes a web interface.
     It uses `python:2.7-slim <https://hub.docker.com/r/library/python/tags/>`_
 
-This allows for simple deployments on a VPS or dedicated server. Each bot will be dynamically assinged a subdomain. 
+This allows for simple deployments on a VPS or dedicated server. Each bot will be dynamically assinged a subdomain.
 You can also use it to run the bots locally using subdomains.
 
 To use this file:-

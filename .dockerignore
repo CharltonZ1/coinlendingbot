@@ -8,6 +8,7 @@ nohup.out
 *.idea
 *.csv
 *.sqlite3
+Makefile
 
 docs
 logs
@@ -15,3 +16,5 @@ market_data
 .git*
 .dockerignore
 __pycache__
+venv
+.hyphothesis

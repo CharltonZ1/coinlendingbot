@@ -1,18 +1,19 @@
 # coding=utf-8
+import logging
 import hashlib
 import hmac
 import json
-import socket
 import time
 from datetime import datetime
-import urllib
-import urllib2
+import requests
 import threading
-import modules.Configuration as Config
+import urllib
+# from builtins import range
 
-from modules.RingBuffer import RingBuffer
-from modules.ExchangeApi import ExchangeApi
-from modules.ExchangeApi import ApiError
+import coinlendingbot.Configuration as Config
+from coinlendingbot.RingBuffer import RingBuffer
+from coinlendingbot.ExchangeApi import ExchangeApi
+from coinlendingbot.ExchangeApi import ApiError
 
 
 def post_process(before):
@@ -21,7 +22,7 @@ def post_process(before):
     # Add timestamps if there isnt one but is a datetime
     if 'return' in after:
         if isinstance(after['return'], list):
-            for x in xrange(0, len(after['return'])):
+            for x in range(0, len(after['return'])):
                 if isinstance(after['return'][x], dict):
                     if 'datetime' in after['return'][x] and 'timestamp' not in after['return'][x]:
                         after['return'][x]['timestamp'] = float(ExchangeApi.create_time_stamp(after['return'][x]['datetime']))  # nopep8
@@ -32,13 +33,15 @@ def post_process(before):
 class Poloniex(ExchangeApi):
     def __init__(self, cfg, weblog):
         super(Poloniex, self).__init__(cfg, weblog)
+        self.logger = logging.getLogger(__name__)
         self.req_per_period = 6
         self.default_req_period = 1000  # milliseconds
         self.req_period = self.default_req_period
         self.req_time_log = RingBuffer(self.req_per_period)
         self.lock = threading.RLock()
-        socket.setdefaulttimeout(int(Config.get("BOT", "timeout", 30, 1, 180)))
-        self.api_debug_log = self.cfg.getboolean("BOT", "api_debug_log")
+        self.timeout = int(Config.get("BOT", "timeout", 30, 1, 180))
+        self.url_public = 'https://poloniex.com/public'
+        self.url_private = 'https://poloniex.com/tradingApi'
 
     def limit_request_rate(self):
         super(Poloniex, self).limit_request_rate()
@@ -57,54 +60,63 @@ class Poloniex(ExchangeApi):
         # keep the 6 request per sec limit
         self.limit_request_rate()
 
-        if req is None:
-            req = {}
-
         def _read_response(resp):
-            resp_data = json.loads(resp.read())
+            resp_data = resp.json()
             if 'error' in resp_data:
                 raise ApiError(resp_data['error'])
             return resp_data
 
+        if req is None:
+            req = {}
+
         try:
+            payload = {
+                "timeout": self.timeout
+            }
             if command == "returnTicker" or command == "return24hVolume":
-                ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/public?command=' + command))
+                ret = requests.get(self.url_public, params={"command": command})
                 return _read_response(ret)
             elif command == "returnOrderBook":
-                ret = urllib2.urlopen(urllib2.Request(
-                    'https://poloniex.com/public?command=' + command + '&currencyPair=' + str(req['currencyPair'])))
+                ret = requests.get(self.url_public,
+                                   params={"command": command, "currencyPair": str(req['currencyPair'])})
                 return _read_response(ret)
             elif command == "returnMarketTradeHistory":
-                ret = urllib2.urlopen(urllib2.Request(
-                    'https://poloniex.com/public?command=' + "returnTradeHistory" + '&currencyPair=' + str(
-                        req['currencyPair'])))
+                ret = requests.get(self.url_public,
+                                   params={"command": "returnTradeHistory", "currencyPair":  str(req['currencyPair'])})
                 return _read_response(ret)
             elif command == "returnLoanOrders":
-                req_url = ('https://poloniex.com/public?command=' + "returnLoanOrders"
-                           + '&currency=' + str(req['currency']))
+                params = {
+                    "command": command,
+                    "currency": str(req['currency'])
+                }
                 if req['limit'] > 0:
-                    req_url += ('&limit=' + str(req['limit']))
-                ret = urllib2.urlopen(urllib2.Request(req_url))
+                    params["limit"] = req["limit"]
+                ret = requests.get(self.url_public, params)
                 return _read_response(ret)
             else:
-                req['command'] = command
-                req['nonce'] = int(time.time() * 1000)
-                post_data = urllib.urlencode(req)
-
-                sign = hmac.new(self.apiSecret, post_data, hashlib.sha512).hexdigest()
-                headers = {
-                    'Sign': sign,
-                    'Key': self.apiKey
+                payload["url"] = self.url_private
+                payload["data"] = {
+                    "command": command,
+                    "nonce": int(time.time() * 1000)
                 }
 
-                ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/tradingApi', post_data, headers))
+                sign = hmac.new(self.apiSecret.encode('utf-8'),
+                                urllib.parse.urlencode(payload["data"]).encode('utf-8'),
+                                hashlib.sha512).hexdigest()
+
+                payload["headers"] = {
+                    'Sign': sign,
+                    'Key': self.apiKey.encode('utf8')
+                }
+
+                ret = requests.post(**payload)
                 json_ret = _read_response(ret)
                 return post_process(json_ret)
 
             # Check in case something has gone wrong and the timer is too big
             self.reset_request_timer()
 
-        except urllib2.HTTPError as ex:
+        except urllib.error.HTTPError as ex:
             raw_polo_response = ex.read()
             try:
                 data = json.loads(raw_polo_response)
@@ -118,12 +130,10 @@ class Poloniex(ExchangeApi):
                     self.increase_request_timer()
                 else:
                     polo_error_msg = raw_polo_response
-            ex.message = ex.message if ex.message else str(ex)
-            ex.message = "{0} Requesting {1}.  Poloniex reports: '{2}'".format(ex.message, command, polo_error_msg)
+            ex.message = "{0} Requesting {1}.  Poloniex reports: '{2}'".format(ex, command, polo_error_msg)
             raise ex
         except Exception as ex:
-            ex.message = ex.message if ex.message else str(ex)
-            ex.message = "{0} Requesting {1}".format(ex.message, command)
+            ex.message = "{0} Requesting {1}".format(ex, command)
             raise
 
     def return_ticker(self):

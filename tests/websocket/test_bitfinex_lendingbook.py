@@ -10,7 +10,7 @@ parentdir = os.path.dirname(os.path.dirname(currentdir))
 sys.path.insert(0, parentdir)
 
 
-from modules.websocket import ExchangeWsClient  # nopep8
+from coinlendingbot.websocket import ExchangeWsClient  # nopep8
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s:%(levelname)s:%(name)s: %(message)s')
 
@@ -24,7 +24,7 @@ def websocket():
 
 def test_lendingbook_autosubscribe(websocket):
     book = websocket.return_lendingbook('USD')
-    print book
+    print(book)
     assert book['update_time']
     assert book['bids']
     assert book['asks']

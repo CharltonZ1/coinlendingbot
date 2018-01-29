@@ -84,7 +84,7 @@ class BitfinexWsClientProtocol(WebSocketClientProtocol):
             self.logging.error("Channel unknown: {} : {}".format(chanId, msg))
             return
         data = msg[1]
-        if isinstance(data, unicode):
+        if isinstance(data, str):
             if data == "hb":
                 self._heart_beat(chanId)
         else:
@@ -144,7 +144,7 @@ class BitfinexWsClientProtocol(WebSocketClientProtocol):
 
     def _send(self, data):
         self.logging.debug("{}".format(data))
-        self.sendMessage(json.dumps(data))
+        self.sendMessage(json.dumps(data).encode('utf8'))
 
     def _find_channel_id(self, symbol):
         symbol_type = 'currency' if len(symbol) == 3 else 'pair'

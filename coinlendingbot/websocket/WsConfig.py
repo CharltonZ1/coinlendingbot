@@ -1,4 +1,4 @@
-from modules.websocket import BitfinexWsClientProtocol
+from coinlendingbot.websocket import BitfinexWsClientProtocol
 
 WsConfig = {
     "BITFINEX": {

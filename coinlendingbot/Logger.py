@@ -4,9 +4,9 @@ import io
 import json
 import time
 
-import modules.Configuration as Config
-from RingBuffer import RingBuffer
-from Notify import send_notification
+import coinlendingbot.Configuration as Config
+from coinlendingbot.RingBuffer import RingBuffer
+from coinlendingbot.Notify import send_notification
 
 
 class JsonOutput(object):
@@ -29,7 +29,7 @@ class JsonOutput(object):
     def writeJsonFile(self):
         with io.open(self.jsonOutputFile, 'w', encoding='utf-8') as f:
             self.jsonOutput["log"] = self.jsonOutputLog.get()
-            f.write(unicode(json.dumps(self.jsonOutput, ensure_ascii=True, sort_keys=True), errors='replace'))
+            f.write(json.dumps(self.jsonOutput, ensure_ascii=True, sort_keys=True))
             f.close()
 
     def addSectionLog(self, section, key, value):
