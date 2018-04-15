@@ -58,10 +58,10 @@ class Logger(object):
     def __init__(self, json_file, json_log_size, exchange):
         self._lent = ''
         self._daysRemaining = ''
-        self.compactLog = False
         self.output = JsonOutput(json_file, json_log_size, exchange)
         self.compactLog = bool(Config.get('BOT', 'jsonlogcompact', False))
         self.refreshStatus()
+        self.persistStatus()
 
     @staticmethod
     def timestamp():
@@ -110,22 +110,17 @@ class Logger(object):
         self.output.status(self._lent, self.timestamp(), self._daysRemaining)
 
     def addSectionLog(self, section, key, value):
-        if hasattr(self.output, 'addSectionLog'):
-            self.output.addSectionLog(section, key, value)
+        self.output.addSectionLog(section, key, value)
 
     def updateStatusValue(self, coin, key, value):
-        if hasattr(self.output, 'statusValue'):
-            self.output.statusValue(coin, key, value)
+        self.output.statusValue(coin, key, value)
 
     def updateOutputCurrency(self, key, value):
-        if hasattr(self.output, 'outputCurrency'):
-            self.output.outputCurrency(key, value)
+        self.output.outputCurrency(key, value)
 
     def persistStatus(self):
-        if hasattr(self.output, 'writeJsonFile'):
-            self.output.writeJsonFile()
-        if hasattr(self.output, 'clearStatusValues'):
-            self.output.clearStatusValues()
+        self.output.writeJsonFile()
+        self.output.clearStatusValues()
 
     @staticmethod
     def digestApiMsg(msg):

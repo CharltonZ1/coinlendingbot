@@ -130,7 +130,7 @@ class Bitfinex(ExchangeApi):
             for symbol in bfx_resp:
                 base = symbol[3:].upper()
                 curr = symbol[:3].upper()
-                if ((base == 'BTC' and curr in currencies) or
+                if ((base in ['BTC', 'USD'] and curr in currencies) or
                    (base in currencies and curr == 'BTC')):
                     self.symbols.append(symbol)
 

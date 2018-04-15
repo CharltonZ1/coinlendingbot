@@ -4,7 +4,7 @@ import sched
 import time
 import threading
 
-logger = logging.getLogger(__name__)
+logger = None
 
 Config = None
 api = None
@@ -49,7 +49,9 @@ defaultLoanOrdersRequestLimit = 100
 
 
 def init(cfg, api1, log1, data, maxtolend, dry_run1, analysis, notify_conf1):
-    global Config, api, log, Data, MaxToLend, Analysis, notify_conf
+    global Config, api, log, Data, MaxToLend, Analysis, notify_conf, logger
+    logger = logging.getLogger(__name__)
+    logger.info('Init Lending.')
     Config = cfg
     api = api1
     log = log1
@@ -194,6 +196,7 @@ def create_lend_offer(currency, amt, rate):
 
 
 def cancel_all():
+    logger.info('Cancel all orders.')
     loan_offers = api.return_open_loan_offers()
     available_balances = api.return_available_account_balances('lending')
     for CUR in loan_offers:
@@ -224,8 +227,10 @@ def cancel_all():
 
 
 def lend_all():
+    logger.info('Lend all.')
     total_lent = Data.get_total_lent()[0]
     lending_balances = api.return_available_account_balances("lending")['lending']
+    logger.debug('lending_balances: %s', lending_balances)
     if dry_run:  # just fake some numbers, if dryrun (testing)
         lending_balances = Data.get_on_order_balances()
 
@@ -394,7 +399,8 @@ def get_gap_mode_rates(cur, cur_active_bal, cur_total_balance, ticker):
 
 
 def lend_cur(active_cur, total_lent, lending_balances, ticker):
-
+    logger.debug('active_cur: %s, total_lent: %s, lending_balances: %s, ticker: %s',
+                 active_cur, total_lent, lending_balances, ticker)
     active_cur_total_balance = Decimal(lending_balances[active_cur])
     if active_cur in total_lent:
         active_cur_total_balance += Decimal(total_lent[active_cur])

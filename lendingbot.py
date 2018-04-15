@@ -54,6 +54,7 @@ def main(config, logconfig, dryrun):
     # Configure web server
     web_server_enabled = Config.getboolean('BOT', 'startWebServer')
     if web_server_enabled:
+        logger.info('Web server enabled.')
         if json_output_enabled is False:
             # User wants webserver enabled. Must have JSON enabled. Force logging with defaults.
             json_output_enabled = True
@@ -74,6 +75,7 @@ def main(config, logconfig, dryrun):
     Config.init(config, Data)
     notify_conf = Config.get_notification_config()
     if Config.has_option('MarketAnalysis', 'analyseCurrencies'):
+        logger.info('MarketAnalysis enabled.')
         from coinlendingbot.MarketAnalysis import MarketAnalysis
         # Analysis.init(Config, api, Data)
         analysis = MarketAnalysis(Config, api)
@@ -88,6 +90,7 @@ def main(config, logconfig, dryrun):
     try:
         while True:
             try:
+                logger.info('New round.')
                 Data.update_conversion_rates(output_currency, json_output_enabled)
                 PluginsManager.before_lending()
                 Lending.transfer_balances()
@@ -97,7 +100,7 @@ def main(config, logconfig, dryrun):
                 weblog.refreshStatus(Data.stringify_total_lent(*Data.get_total_lent()),
                                      Data.get_max_duration(end_date, "status"))
                 weblog.persistStatus()
-                sys.stdout.flush()
+                logger.info('Round finished.')
                 time.sleep(Lending.get_sleep_time())
             except KeyboardInterrupt:
                 # allow existing the main bot loop
@@ -147,7 +150,6 @@ def main(config, logconfig, dryrun):
                                  .format(Data.get_bot_version()))
                     if notify_conf['notify_caught_exception']:
                         weblog.notify("{0}\n-------\n{1}".format(ex, traceback.format_exc()), notify_conf)
-                sys.stdout.flush()
                 time.sleep(Lending.get_sleep_time())
 
     except KeyboardInterrupt:
